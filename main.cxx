@@ -6,13 +6,77 @@
 #include <gl/gl.h>
 
 #define M_PI       3.14159265358979323846
-
-SDL_GLContext glcontext;
-SDL_Window* window = NULL;
-SDL_Renderer* renderer = NULL;
-
 const int WIDTH = 600;
 const int HEIGHT = 600;
+
+using namespace std;
+
+struct OpenGLProperties {
+	string nameVendor;
+	string nameRenderer;
+	string nameVersion;
+	string nameExtension;
+
+	int major;
+	int minor;
+
+	void toStream(std::ostream& out) {
+		out << "VENDOR:   " << nameVendor << endl
+			<< "RENDERER: " << nameRenderer << endl
+			<< "VERSION:  " << nameVersion << endl
+			<< "SELECTED: " << major << "." << minor << endl;
+	}
+};
+
+struct AppContext {
+	SDL_GLContext glcontext;
+	SDL_Window* window = NULL;
+	SDL_Renderer* renderer = NULL;
+	string lastError;
+	OpenGLProperties openglProperties;
+
+	bool startSDL();
+	void stopSDL();
+} App;
+
+bool AppContext::startSDL() {
+	SDL_Init(SDL_INIT_VIDEO);
+	if (!SDL_GL_LoadLibrary(nullptr)) {
+		lastError = "Failed to load GL library";
+		return false;
+	}
+	
+	int requestedValue = 8;
+	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, requestedValue);
+
+	window = SDL_CreateWindow("Explorer3D", WIDTH, HEIGHT, SDL_WINDOW_OPENGL);
+	renderer = SDL_CreateRenderer(window, "opengl");
+	glcontext = SDL_GL_CreateContext(window);
+
+	int loadedValue;
+	SDL_GL_GetAttribute(SDL_GL_STENCIL_SIZE, &loadedValue);
+	if (loadedValue < requestedValue) {
+		lastError = "Failed to get expected stencil size; aborting";
+		return false;
+	}
+	
+	openglProperties.nameVendor = string((char*)(glGetString(GL_VENDOR)));
+	openglProperties.nameRenderer = string((char*)(glGetString(GL_RENDERER)));
+	openglProperties.nameVersion = string((char*)(glGetString(GL_VERSION)));
+	openglProperties.nameExtension = string((char*)(glGetString(GL_EXTENSIONS)));
+
+	SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &openglProperties.major);
+	SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &openglProperties.minor);
+
+	return true;
+}
+
+void AppContext::stopSDL() {
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
+}
+
 
 struct Drawable {
 	virtual void init() = 0;
@@ -21,25 +85,6 @@ struct Drawable {
 
 
 struct Draw_017 : public Drawable {
-
-	void processHits(GLint hits, GLuint buffer[])
-	{
-		unsigned int i, j;
-		GLuint names, * ptr;
-		printf("hits = %d\n", hits);
-		ptr = (GLuint*)buffer;
-		for (i = 0; i < hits; i++) { /* for each hit */
-			names = *ptr;
-			printf(" number of names for hit = %d\n", names); ptr++;
-			printf(" z1 is %g;", (float)*ptr / 0x7fffffff); ptr++;
-			printf(" z2 is %g\n", (float)*ptr / 0x7fffffff); ptr++;
-			printf(" the name is ");
-			for (j = 0; j < names; j++) { /* for each name */
-				printf("%d ", *ptr); ptr++;
-			}
-			printf("\n");
-		}
-	}
 
 	void init() {
 		std::cout << "\nDraw_017... \n\n";
@@ -91,44 +136,8 @@ struct Draw_017 : public Drawable {
 		glTexCoord2f(4, 4); glVertex2f(0.4, 0.4);
 		glTexCoord2f(0, 4); glVertex2f(-0.4, 0.4);
 		glEnd();
-		GLuint selectBuf[500];
-		GLint hits;
-		glSelectBuffer(500, selectBuf);
-		glRenderMode(GL_SELECT);
-		std::cout << "RENDER MODE SELECT\n";
 		
-		glInitNames();
-		glPushName(10);
-
-		glLoadIdentity();
-		glTranslatef(0, -0.5, 0);
-		glRotatef(45, 1, 1, 0);
-		
-		glBegin(GL_QUADS);
-		glVertex2f(-0.4, -0.4);
-		glVertex2f(0.4, -0.4);
-		glVertex2f(0.4, 0.4);
-		glVertex2f(-0.4, 0.4);
-		glEnd();
-
-		glLoadIdentity();
-		glTranslatef(0, 0.5, -1);
-		glRotatef(45, 1, 1, 0);
-		glLoadName(20);
-		
-		glBegin(GL_QUADS);
-		glVertex2f(-0.3, -0.3);
-		glVertex2f(0.3, -0.3);
-		glVertex2f(0.3, 0.3);
-		glVertex2f(-0.3, 0.3);
-		glEnd();
-
-		glFlush();
-		hits = glRenderMode(GL_RENDER);
-		processHits(hits, selectBuf);
-		std::cout << "Hits done: \n";
-		
-		SDL_GL_SwapWindow(window);
+		SDL_GL_SwapWindow(App.window);
 	}
 
 	void frame() {
@@ -138,34 +147,13 @@ struct Draw_017 : public Drawable {
 
 int main(int argc, char** argv) {
 
-	SDL_Init(SDL_INIT_VIDEO);
-	if (!SDL_GL_LoadLibrary(nullptr)) {
-		std::cout << "Failed to load GL" << std::endl;
+	if (!App.startSDL()) {
+		cout << "Failed to start, error: " << App.lastError << endl;
+		return 1;
 	}
-	
-	int value;
-	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-	window = SDL_CreateWindow("Hello SDL", WIDTH, HEIGHT, SDL_WINDOW_OPENGL);
-	renderer = SDL_CreateRenderer(window, "opengl");
+	App.openglProperties.toStream(cout);
 
-	glcontext = SDL_GL_CreateContext(window);
-	
-	SDL_GL_GetAttribute(SDL_GL_STENCIL_SIZE, &value);
-	std::cout << "STENCIL_SIZE: " << value << std::endl;
-
-	const GLubyte* nameVendor = glGetString(GL_VENDOR);
-	const GLubyte* nameRenderer = glGetString(GL_RENDERER);
-	const GLubyte* nameVersion = glGetString(GL_VERSION);
-	const GLubyte* nameExtension = glGetString(GL_EXTENSIONS);
-
-	std::cout << "Version: " << nameVendor << " ; " << nameRenderer << " ; " << nameVersion << " ; " << nameExtension << std::endl << std::endl;
-
-	int major, minor;
-	SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &major);
-	SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minor);
-
-	std::cout << "MAJOR: " << major << "; MINOR:" << minor << std::endl;
 	bool showEvent = false;
 	Drawable& d = Draw_017();
 
@@ -174,6 +162,7 @@ int main(int argc, char** argv) {
 	const int FPS = 60;
 	int milis = 1000 / 60;
 
+	
 	for (;;) {
 		SDL_Event event;
 		if (SDL_PollEvent(&event)) {
@@ -190,8 +179,6 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
+	App.stopSDL();
 	return 0;
 }
