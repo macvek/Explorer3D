@@ -5,6 +5,8 @@
 #include <Windows.h>
 #include <gl/gl.h>
 
+#include <cmath>
+
 #define M_PI       3.14159265358979323846
 const int WIDTH = 600;
 const int HEIGHT = 600;
@@ -109,13 +111,16 @@ struct DrawPlane {
 		refresh = true;
 	}
 
-	void applyMoves() {
-		if (moveAlongX) {
-			posX += moveSpeed * moveAlongX;
-		}
+	
 
-		if (moveAlongZ) {
-			posZ += moveSpeed * moveAlongZ;
+	void applyMoves() {
+
+		double zOff = cos(rad(-aY));
+		double xOff = sin(rad(-aY));
+		
+		if (moveAlongX != 0 || moveAlongZ != 0) {
+			posX += -moveSpeed * xOff;
+			posZ += -moveSpeed * zOff;
 		}
 	}
 
@@ -139,7 +144,7 @@ struct DrawPlane {
 		bool perspetive = true;
 		if (perspetive) {
 			GLdouble aspectRatio = WIDTH / HEIGHT;
-			GLdouble tangent = tan(fov / 2 * M_PI / 180);
+			GLdouble tangent = tan(rad(fov / 2));
 			GLdouble right = nearPlane * tangent;
 			GLdouble top = right / aspectRatio;
 
@@ -150,6 +155,14 @@ struct DrawPlane {
 		}
 
 		glMatrixMode(GL_MODELVIEW);
+	}
+
+	double rad(double deg) {
+		return M_PI / 180 * deg;
+	}
+
+	double deg(double rad) {
+		return 180 / M_PI * rad;
 	}
 
 	void frame() {
