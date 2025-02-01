@@ -28,8 +28,6 @@ struct OpenGLProperties {
 	}
 };
 
-GLfloat angleY = 45;
-GLfloat angleX = 45;
 
 struct AppContext {
 	SDL_GLContext glcontext;
@@ -81,13 +79,7 @@ void AppContext::stopSDL() {
 }
 
 
-struct Drawable {
-	virtual void init() = 0;
-	virtual void frame() = 0;
-};
-
-
-struct DrawPlane : public Drawable {
+struct DrawPlane {
 
 	const int fovDiff = 1;
 	const double fovMax = 160;
@@ -103,11 +95,22 @@ struct DrawPlane : public Drawable {
 	double posY = 0;
 	double posZ = 0;
 
+	double aX = 0;
+	double aY = 0;
+
 	bool refresh = false;
 	void init() {
 
 		glViewport(0, 0, WIDTH, HEIGHT);
 		refresh = true;
+	}
+
+	void pointerUpdate(float dX, float dY) {
+		// sic! - moving left-right (pointer X) rotates around axis Y, and pointer Y around axis X
+		aY += 0.2 * dX;
+		aX += 0.2 * dY;
+
+		cout << "aX:" << aX << "\t" << "aY:" << aY << "\n";
 	}
 
 	void updateFov(double newFov) {
@@ -145,6 +148,9 @@ struct DrawPlane : public Drawable {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
 
+		glRotatef(aY, 0, 1, 0);
+		glRotatef(aX, 1, 0, 0);
+		
 		glTranslatef(-posX, -posY, -posZ);
 
 		glPushMatrix();
@@ -199,8 +205,7 @@ int main(int argc, char** argv) {
 		if (SDL_PollEvent(&event)) {
 			if (event.type == SDL_EVENT_MOUSE_MOTION) {
 				SDL_MouseMotionEvent* mouseEvent = (SDL_MouseMotionEvent*) &event;
-				angleX += mouseEvent->xrel;
-				angleY += mouseEvent->yrel;
+				d.pointerUpdate(mouseEvent->xrel, mouseEvent->yrel);
 			}
 			
 			if (event.type == SDL_EVENT_KEY_UP) {
