@@ -13,6 +13,51 @@ const int HEIGHT = 600;
 
 using namespace std;
 
+struct Vec3F {
+	GLfloat x,y,z;
+};
+
+struct M44 {
+	GLfloat m[4][4] = { 0 };
+
+	void asRotateX(GLfloat phi) {
+		m[0][0] = 1; m[0][1] = 0;			m[0][2] = 0;		 m[0][3] = 0;
+		m[1][0] = 0; m[1][1] = cos(phi);	m[1][2] = -sin(phi); m[1][3] = 0;
+		m[2][0] = 0; m[2][1] = sin(phi);	m[2][2] = cos(phi);	 m[2][3] = 0;
+		m[3][0] = 0; m[3][1] = 0;			m[3][2] = 0;		 m[3][3] = 1;
+	}
+
+	void asRotateY(GLfloat  phi) {
+		m[0][0] = cos(phi);   m[0][1] = 0;			m[0][2] = sin(phi);	m[0][3] = 0;
+		m[1][0] = 0;		  m[1][1] = 1;		   	m[1][2] = 0;		m[1][3] = 0;
+		m[2][0] = -sin(phi);  m[2][1] = 0;			m[2][2] = cos(phi); m[2][3] = 0;
+		m[3][0] = 0;		  m[3][1] = 0;			m[3][2] = 0;		m[3][3] = 1;
+	}
+
+	void asRotateZ(GLfloat phi) {
+		m[0][0] = cos(phi);   m[0][1] = -sin(phi);	m[0][2] = 0; m[0][3] = 0;
+		m[1][0] = sin(phi);	  m[1][1] = cos(phi);	m[1][2] = 0; m[1][3] = 0;
+		m[2][0] = 0;		  m[2][1] = 0;			m[2][2] = 1; m[2][3] = 0;
+		m[3][0] = 0;		  m[3][1] = 0;			m[3][2] = 0; m[3][3] = 1;
+	}
+
+	void Print() {
+		cout << " [ " << m[0][0] << "\t" << m[0][1] << "\t" << m[0][2] << "\t" << m[0][3] << " ] " << endl;
+		cout << " [ " << m[1][0] << "\t" << m[1][1] << "\t" << m[1][2] << "\t" << m[1][3] << " ] " << endl;
+		cout << " [ " << m[2][0] << "\t" << m[2][1] << "\t" << m[2][2] << "\t" << m[2][3] << " ] " << endl;
+		cout << " [ " << m[3][0] << "\t" << m[3][1] << "\t" << m[3][2] << "\t" << m[3][3] << " ] " << endl;
+	}
+
+	Vec3F ApplyOnPoint(Vec3F& p) {
+		GLfloat nX = m[0][0] * p.x + m[0][1] * p.y + m[0][2] * p.z + m[0][3];
+		GLfloat nY = m[1][0] * p.x + m[1][1] * p.y + m[1][2] * p.z + m[1][3];
+		GLfloat nZ = m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3];
+
+		return Vec3F{ nX , nY, nZ };
+	}
+
+};
+
 struct OpenGLProperties {
 	string nameVendor;
 	string nameRenderer;
@@ -111,16 +156,20 @@ struct DrawPlane {
 		refresh = true;
 	}
 
-	
-
 	void applyMoves() {
-
-		double zOff = cos(rad(-aY));
-		double xOff = sin(rad(-aY));
-		
 		if (moveAlongX != 0 || moveAlongZ != 0) {
-			posX += -moveSpeed * xOff;
-			posZ += -moveSpeed * zOff;
+
+			Vec3F v = { moveAlongX, 0, moveAlongZ };
+
+			M44 m; 
+			m.asRotateY(rad(-aY));
+			Vec3F vY =  m.ApplyOnPoint(v);
+			m.asRotateX(rad(-aX));
+			Vec3F vX = m.ApplyOnPoint(vY);
+			
+			posX += moveSpeed * vX.x;
+			posY += moveSpeed * vX.y;
+			posZ += moveSpeed * vX.z;
 		}
 	}
 
