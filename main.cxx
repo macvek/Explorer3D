@@ -169,6 +169,8 @@ struct DrawPlane {
 		
 		glTranslatef(-posX, -posY, -posZ);
 
+		drawGrid();
+
 		glPushMatrix();
 			glTranslatef(0, 0, -3);
 			drawQuad();
@@ -192,6 +194,24 @@ struct DrawPlane {
 
 		glEnd();
 		glPopMatrix();
+	}
+
+	void drawGrid() {
+		float c = 0.3;
+		glColor3f(c, c, c);
+		for (int x = -10; x <= 10; ++x) {
+			glBegin(GL_LINES);
+			glVertex3f(x, -0.2, -10);
+			glVertex3f(x, -0.2, 10);
+			glEnd();
+		}
+
+		for (int z = -10; z <= 10; ++z) {
+			glBegin(GL_LINES);
+			glVertex3f(-10, -0.2, z);
+			glVertex3f(10, -0.2, z);
+			glEnd();
+		}
 	}
 
 };
