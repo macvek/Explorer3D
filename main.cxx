@@ -94,10 +94,14 @@ struct DrawPlane : public Drawable {
 	const double fovMin = 5;
 
 	const double nearPlane = 0.1;
-	const double farPlane = 50;
+	const double farPlane = 10;
 
 	GLdouble FOV = 60;
 	int frames = 0;
+
+	double posX = 0;
+	double posY = 0;
+	double posZ = 0;
 
 	bool refresh = false;
 	void init() {
@@ -140,6 +144,8 @@ struct DrawPlane : public Drawable {
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
+
+		glTranslatef(-posX, -posY, -posZ);
 
 		glPushMatrix();
 			glTranslatef(0, 0, -3);
@@ -207,6 +213,19 @@ int main(int argc, char** argv) {
 					d.updateFov(d.FOV - d.fovDiff);
 					cout << "FOV:" << d.FOV << endl;
 				}
+				else if (keyEvent->key == SDLK_LEFT) {
+					d.posX -= 0.1;
+				}
+				else if (keyEvent->key == SDLK_RIGHT) {
+					d.posX += 0.1;
+				}
+				else if (keyEvent->key == SDLK_UP) {
+					d.posZ -= 0.1;
+				}
+				else if (keyEvent->key == SDLK_DOWN) {
+					d.posZ += 0.1;
+				}
+				cout << "X:" << d.posX << "\tZ:" << d.posZ << "\n";
 			}
 
 			if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
