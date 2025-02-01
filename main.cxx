@@ -164,8 +164,8 @@ struct DrawPlane {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
 
-		glRotatef(aY, 0, 1, 0);
 		glRotatef(aX, 1, 0, 0);
+		glRotatef(aY, 0, 1, 0);
 		
 		glTranslatef(-posX, -posY, -posZ);
 
