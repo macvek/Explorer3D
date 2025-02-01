@@ -8,8 +8,6 @@
 #include <cmath>
 
 #define M_PI       3.14159265358979323846
-const int WIDTH = 600;
-const int HEIGHT = 600;
 
 using namespace std;
 
@@ -95,6 +93,9 @@ struct OpenGLProperties {
 
 
 struct AppContext {
+	int width = 600;
+	int height = 600;
+
 	SDL_GLContext glcontext;
 	SDL_Window* window = NULL;
 	SDL_Renderer* renderer = NULL;
@@ -115,7 +116,7 @@ bool AppContext::startSDL() {
 	int requestedValue = 8;
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, requestedValue);
 
-	window = SDL_CreateWindow("Explorer3D", WIDTH, HEIGHT, SDL_WINDOW_OPENGL);
+	window = SDL_CreateWindow("Explorer3D", width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	renderer = SDL_CreateRenderer(window, "opengl");
 	glcontext = SDL_GL_CreateContext(window);
 
@@ -169,8 +170,7 @@ struct DrawPlane {
 
 	bool refresh = false;
 	void init() {
-
-		glViewport(0, 0, WIDTH, HEIGHT);
+		glViewport(0, 0, App.width, App.height);
 		refresh = true;
 	}
 
@@ -213,7 +213,7 @@ struct DrawPlane {
 
 		bool perspetive = true;
 		if (perspetive) {
-			GLdouble aspectRatio = WIDTH / HEIGHT;
+			GLdouble aspectRatio = (1.0*App.width) / App.height;
 			GLdouble tangent = tan(rad(fov / 2));
 			GLdouble right = nearPlane * tangent;
 			GLdouble top = right / aspectRatio;
@@ -322,6 +322,13 @@ int main(int argc, char** argv) {
 	for (;;) {
 		SDL_Event event;
 		if (SDL_PollEvent(&event)) {
+			if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+				SDL_WindowEvent* windowEvent = (SDL_WindowEvent*)&event;
+				App.width = windowEvent->data1;
+				App.height = windowEvent->data2;
+				d.init();
+			}
+			
 			if (event.type == SDL_EVENT_MOUSE_MOTION) {
 				SDL_MouseMotionEvent* mouseEvent = (SDL_MouseMotionEvent*) &event;
 				d.pointerUpdate(mouseEvent->xrel, mouseEvent->yrel);
