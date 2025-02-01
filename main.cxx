@@ -78,7 +78,6 @@ void AppContext::stopSDL() {
 	SDL_Quit();
 }
 
-
 struct DrawPlane {
 
 	const int fovDiff = 1;
@@ -88,7 +87,7 @@ struct DrawPlane {
 	const double nearPlane = 0.1;
 	const double farPlane = 10;
 
-	GLdouble FOV = 60;
+	GLdouble fov = 60;
 	int frames = 0;
 
 	double posX = 0;
@@ -98,11 +97,26 @@ struct DrawPlane {
 	double aX = 0;
 	double aY = 0;
 
+	const double moveSpeed = 0.02;
+
+	int moveAlongX = 0;
+	int moveAlongZ = 0;
+
 	bool refresh = false;
 	void init() {
 
 		glViewport(0, 0, WIDTH, HEIGHT);
 		refresh = true;
+	}
+
+	void applyMoves() {
+		if (moveAlongX) {
+			posX += moveSpeed * moveAlongX;
+		}
+
+		if (moveAlongZ) {
+			posZ += moveSpeed * moveAlongZ;
+		}
 	}
 
 	void pointerUpdate(float dX, float dY) {
@@ -114,7 +128,7 @@ struct DrawPlane {
 	}
 
 	void updateFov(double newFov) {
-		FOV = max<double>(min<double>(newFov, fovMax), fovMin);
+		fov = max<double>(min<double>(newFov, fovMax), fovMin);
 		refresh = true;
 	}
 
@@ -125,7 +139,7 @@ struct DrawPlane {
 		bool perspetive = true;
 		if (perspetive) {
 			GLdouble aspectRatio = WIDTH / HEIGHT;
-			GLdouble tangent = tan(FOV / 2 * M_PI / 180);
+			GLdouble tangent = tan(fov / 2 * M_PI / 180);
 			GLdouble right = nearPlane * tangent;
 			GLdouble top = right / aspectRatio;
 
@@ -140,6 +154,8 @@ struct DrawPlane {
 
 	void frame() {
 		++frames;
+
+		applyMoves();
 
 		if (refresh) {
 			refresh = false;
@@ -208,29 +224,41 @@ int main(int argc, char** argv) {
 				d.pointerUpdate(mouseEvent->xrel, mouseEvent->yrel);
 			}
 			
+			if (event.type == SDL_EVENT_KEY_DOWN) {
+				SDL_KeyboardEvent* keyEvent = (SDL_KeyboardEvent*)&event;
+				if (false) {}
+				
+				else if (keyEvent->key == SDLK_LEFT) {
+					d.moveAlongX = -1;
+				}
+				else if (keyEvent->key == SDLK_RIGHT) {
+					d.moveAlongX = 1;
+				}
+				else if (keyEvent->key == SDLK_UP) {
+					d.moveAlongZ = -1;
+				}
+				else if (keyEvent->key == SDLK_DOWN) {
+					d.moveAlongZ = 1;
+				}
+			}
+
 			if (event.type == SDL_EVENT_KEY_UP) {
 				SDL_KeyboardEvent* keyEvent = (SDL_KeyboardEvent*)&event;
 				if (keyEvent->key == SDLK_KP_PLUS) {
-					d.updateFov(d.FOV + d.fovDiff);
-					cout << "FOV:" << d.FOV << endl;
+					d.updateFov(d.fov + d.fovDiff);
+					cout << "FOV:" << d.fov << endl;
 				}
 				else if (keyEvent->key == SDLK_KP_MINUS) {
-					d.updateFov(d.FOV - d.fovDiff);
-					cout << "FOV:" << d.FOV << endl;
+					d.updateFov(d.fov - d.fovDiff);
+					cout << "FOV:" << d.fov << endl;
 				}
-				else if (keyEvent->key == SDLK_LEFT) {
-					d.posX -= 0.1;
+				else if (keyEvent->key == SDLK_LEFT || keyEvent->key == SDLK_RIGHT) {
+					d.moveAlongX = 0;
 				}
-				else if (keyEvent->key == SDLK_RIGHT) {
-					d.posX += 0.1;
+				else if (keyEvent->key == SDLK_UP || keyEvent->key == SDLK_DOWN) {
+					d.moveAlongZ = 0;
 				}
-				else if (keyEvent->key == SDLK_UP) {
-					d.posZ -= 0.1;
-				}
-				else if (keyEvent->key == SDLK_DOWN) {
-					d.posZ += 0.1;
-				}
-				cout << "X:" << d.posX << "\tZ:" << d.posZ << "\n";
+
 			}
 
 			if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
