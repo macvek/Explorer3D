@@ -13,6 +13,10 @@ using namespace std;
 
 struct Vec3F {
 	GLfloat x,y,z;
+
+	void Print() {
+		cout << " [ " << x << "\t" << y << "\t" << z << " ] " << endl;
+	}
 };
 
 struct M44 {
@@ -208,7 +212,8 @@ struct DrawPlane {
 		boolean rewriteAngles = true;
 		
 		if (rewriteAngles) {
-			// take vector [0,0,1]; rotate it along Y and X to have directional vector; then rotate matrix along Z and diffY and diffX; from result take aY and aX to match angles along axis
+			
+
 
 		}
 		else {
