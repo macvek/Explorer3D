@@ -12,7 +12,7 @@
 using namespace std;
 
 struct Vec3F {
-	GLfloat x,y,z;
+	double x,y,z;
 
 	void Print() {
 		cout << " [ " << x << "\t" << y << "\t" << z << " ] " << endl;
@@ -20,7 +20,7 @@ struct Vec3F {
 };
 
 struct M44 {
-	GLfloat m[4][4] = { 0 };
+	double m[4][4] = { 0 };
 
 	void asRotateX(GLfloat phi) {
 		m[0][0] = 1; m[0][1] = 0;			m[0][2] = 0;		 m[0][3] = 0;
@@ -219,42 +219,25 @@ struct DrawPlane {
 		Vec3F base = { 0, 0, 1 };
 			
 		M44 m; m.asRotateX(0);
-		M44 mX;
-		M44 mY;
+		M44 mX; mX.asRotateX(rad(aX));
+		M44 mY; mY.asRotateY(rad(aY));
 			
-
-		mX.asRotateX(rad(-(aX)));
-		mY.asRotateY(rad(-(aY)));
-
 		m.Mult(mX);
 		m.Mult(mY);
 
 		Vec3F rotated = m.ApplyOnPoint(base);
 
-		rotated.Print();
+		float radCalcAY = atan2(rotated.x, rotated.z);
+		float calcAY = deg(radCalcAY);
 
-		M44 rMY;
-		M44 rMX;
-		M44 rM;
-
-		rMX.asRotateX(rad(aX));
-		rMY.asRotateY(rad(aY));
-
-		double calcAY = deg(atan2(-rotated.x, rotated.z));
-
-		rM.asRotateX(0);
+		M44 rMY; rMY.asRotateY(-radCalcAY);
+		Vec3F reversedY = rMY.ApplyOnPoint(rotated);
 		
-		rM.Mult(rMY);
-		rM.Mult(rMX);
+		float radCalcAX = atan2(-rotated.y, rotated.z);
+		float calcAX = deg(radCalcAX);
 
-		Vec3F reversedX = rMX.ApplyOnPoint(rotated);
-		double calcAX = deg(atan2(reversedX.y, reversedX.z));
+		reversedY.Print();
 
-		Vec3F reversedYX = rMY.ApplyOnPoint(reversedX); // should equal to reversed
-		Vec3F reversed = rM.ApplyOnPoint(rotated);
-
-		reversed.Print(); // should be close to [0,0,1]
-		reversedYX.Print();
 		cout << "--\n";
 
 		cout << "CALC AY: " << calcAY << "\n";
