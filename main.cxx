@@ -166,6 +166,7 @@ struct DrawPlane {
 	const double moveSpeed = 0.02;
 
 	int moveAlongX = 0;
+	int moveAlongY = 0;
 	int moveAlongZ = 0;
 
 	bool refresh = false;
@@ -175,9 +176,9 @@ struct DrawPlane {
 	}
 
 	void applyMoves() {
-		if (moveAlongX != 0 || moveAlongZ != 0) {
+		if (moveAlongX != 0 || moveAlongZ != 0 || moveAlongY != 0) {
 
-			Vec3F v = { moveAlongX * moveSpeed, 0, moveAlongZ * moveSpeed };
+			Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
 
 			M44 mX; 
 			mX.asRotateX(rad(-aX));
@@ -338,17 +339,23 @@ int main(int argc, char** argv) {
 				SDL_KeyboardEvent* keyEvent = (SDL_KeyboardEvent*)&event;
 				if (false) {}
 				
-				else if (keyEvent->key == SDLK_LEFT) {
+				else if (keyEvent->key == SDLK_A) {
 					d.moveAlongX = -1;
 				}
-				else if (keyEvent->key == SDLK_RIGHT) {
+				else if (keyEvent->key == SDLK_D) {
 					d.moveAlongX = 1;
 				}
-				else if (keyEvent->key == SDLK_UP) {
+				else if (keyEvent->key == SDLK_W) {
 					d.moveAlongZ = -1;
 				}
-				else if (keyEvent->key == SDLK_DOWN) {
+				else if (keyEvent->key == SDLK_S) {
 					d.moveAlongZ = 1;
+				}
+				else if (keyEvent->key == SDLK_SPACE) {
+					d.moveAlongY = 1;
+				}
+				else if (keyEvent->key == SDLK_LSHIFT) {
+					d.moveAlongY = -1;
 				}
 			}
 
@@ -362,13 +369,15 @@ int main(int argc, char** argv) {
 					d.updateFov(d.fov - d.fovDiff);
 					cout << "FOV:" << d.fov << endl;
 				}
-				else if (keyEvent->key == SDLK_LEFT || keyEvent->key == SDLK_RIGHT) {
+				else if (keyEvent->key == SDLK_A || keyEvent->key == SDLK_D) {
 					d.moveAlongX = 0;
 				}
-				else if (keyEvent->key == SDLK_UP || keyEvent->key == SDLK_DOWN) {
+				else if (keyEvent->key == SDLK_W || keyEvent->key == SDLK_S) {
 					d.moveAlongZ = 0;
 				}
-
+				else if (keyEvent->key == SDLK_SPACE || keyEvent->key == SDLK_LSHIFT) {
+					d.moveAlongY = 0;
+				}
 			}
 
 			if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
