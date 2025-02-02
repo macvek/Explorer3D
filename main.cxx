@@ -12,15 +12,26 @@
 using namespace std;
 
 struct Vec3F {
-	double x,y,z;
+	float x,y,z;
 
 	void Print() {
 		cout << " [ " << x << "\t" << y << "\t" << z << " ] " << endl;
 	}
+
+	void normalize() {
+		float l = len();
+		x /= l;
+		y /= l;
+		z /= l;
+	}
+
+	float len() const {
+		return sqrt(x * x + y * y + z * z);
+	}
 };
 
 struct M44 {
-	double m[4][4] = { 0 };
+	float m[4][4] = { 0 };
 
 	void asRotateX(GLfloat phi) {
 		m[0][0] = 1; m[0][1] = 0;			m[0][2] = 0;		 m[0][3] = 0;
@@ -69,9 +80,9 @@ struct M44 {
 	}
 
 	Vec3F ApplyOnPoint(Vec3F& p) {
-		double nX = m[0][0] * p.x + m[0][1] * p.y + m[0][2] * p.z + m[0][3];
-		double nY = m[1][0] * p.x + m[1][1] * p.y + m[1][2] * p.z + m[1][3];
-		double nZ = m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3];
+		float nX = m[0][0] * p.x + m[0][1] * p.y + m[0][2] * p.z + m[0][3];
+		float nY = m[1][0] * p.x + m[1][1] * p.y + m[1][2] * p.z + m[1][3];
+		float nZ = m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3];
 
 		return Vec3F{ nX , nY, nZ };
 	}
@@ -174,8 +185,8 @@ struct DrawPlane {
 	float posY = 0;
 	float posZ = 0;
 
-	float aX = 0;
-	float aY = 0;
+	float aX = 45;
+	float aY = -30;
 	float aZ = 0;
 
 	const float moveSpeed = 0.02;
@@ -244,7 +255,46 @@ struct DrawPlane {
 	}
 
 	void pointerUpdateFreespace(float dX, float dY) {
-		// normalize UP vector and aY to global coordinates;
+		float oY = App.pointerSpeed * dX;
+		float oX = App.pointerSpeed * dY;
+
+		
+		// apply current rotations
+		M44 mX; mX.asRotateX(rad(aX+oX));
+		M44 mY; mY.asRotateY(rad(aY+oY));
+		M44 mZ; mZ.asRotateZ(rad(aZ));
+
+		M44 m; m.asRotateX(0);
+		m.Mult(mZ);
+		m.Mult(mY);
+		m.Mult(mX);
+
+		Vec3F fwd = { 0,0,1 };
+		Vec3F up = { 0,1,0 };
+
+		Vec3F nFwd = m.ApplyOnPoint(fwd);
+		Vec3F nUp = m.ApplyOnPoint(up);
+
+		vectorsToAngles(nFwd, nUp);
+	}
+
+	void vectorsToAngles(Vec3F& fwd, Vec3F& up) {
+		
+		fwd.Print();
+		float radY = atan2(fwd.x, fwd.z);
+		cout << deg(radY) << "\n";
+
+		M44 revY; revY.asRotateY(-radY);
+		Vec3F rotatedX = revY.ApplyOnPoint(fwd);
+		rotatedX.Print();
+
+		float radX = atan2(-rotatedX.y, rotatedX.z);
+		cout << deg(radX) << "\n";
+		cout << "--\n";
+
+		aX = deg(radX);
+		aY = deg(radY);
+		
 	}
 
 	void pointerUpdate(float dX, float dY) {
@@ -289,17 +339,10 @@ struct DrawPlane {
 		return 180 / M_PI * rad;
 	}
 
-	void eyeCoordsHybridXYZ() {
+	void eyeCoords() {
 		glRotatef(aX, 1, 0, 0);
 		glRotatef(aY, 0, 1, 0);
 		glRotatef(aZ, 0, 0, 1);
-	}
-
-	void eyeCoordsFreespace() {
-		// rotate to make UP vector facing [0,1,0] 
-		// rotate along Y axis
-
-
 	}
 
 	void frame() {
@@ -314,13 +357,7 @@ struct DrawPlane {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
 
-		if (movement == MoveHybrid || movement == MoveXYZ) {
-			eyeCoordsHybridXYZ();
-		}
-		if (movement == MoveFreespace) {
-			eyeCoordsFreespace();
-		}
-		
+		eyeCoords();
 		
 		glTranslatef(-posX, -posY, -posZ);
 
@@ -386,9 +423,9 @@ int main(int argc, char** argv) {
 	DrawPlane d;
 
 	d.init();
-	
+	d.movement = MoveFreespace;
 	const int FPS = 60;
-	int milis = 1000 / 60;
+	int milis = 1000 / FPS;
 
 	for (;;) {
 		SDL_Event event;
