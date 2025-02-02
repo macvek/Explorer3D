@@ -240,18 +240,26 @@ struct DrawPlane {
 		rMX.asRotateX(rad(aX));
 		rMY.asRotateY(rad(aY));
 
+		double calcAY = deg(atan2(-rotated.x, rotated.z));
+
 		rM.asRotateX(0);
 		
 		rM.Mult(rMY);
 		rM.Mult(rMX);
 
+		Vec3F reversedY = rMY.ApplyOnPoint(rotated);
+		double calcAX = deg(atan2(rotated.y, rotated.z));
+
+		Vec3F reversedYX = rMX.ApplyOnPoint(reversedY); // should equal to reversed
 		Vec3F reversed = rM.ApplyOnPoint(rotated);
 
 		reversed.Print(); // should be close to [0,0,1]
+		reversedYX.Print();
 		cout << "--\n";
 
-
-//		cout << "aX:" << aX << "\t" << "aY:" << aY << "\n";
+		cout << "CALC AY: " << calcAY << "\n";
+		cout << "CALC AX: " << calcAX << "\n";
+		cout << "aX:" << aX << "\t" << "aY:" << aY << "\n";
 	}
 
 	void updateFov(float newFov) {
