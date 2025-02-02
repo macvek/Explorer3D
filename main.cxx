@@ -96,6 +96,8 @@ struct AppContext {
 	int width = 600;
 	int height = 600;
 
+	float pointerSpeed = 0.2;
+
 	SDL_GLContext glcontext;
 	SDL_Window* window = NULL;
 	SDL_Renderer* renderer = NULL;
@@ -147,27 +149,29 @@ void AppContext::stopSDL() {
 struct DrawPlane {
 
 	const int fovDiff = 1;
-	const double fovMax = 160;
-	const double fovMin = 5;
+	const float fovMax = 160;
+	const float fovMin = 5;
 
-	const double nearPlane = 0.1;
-	const double farPlane = 10;
+	const float nearPlane = 0.1;
+	const float farPlane = 10;
 
 	GLdouble fov = 60;
 	int frames = 0;
 
-	double posX = 0;
-	double posY = 0;
-	double posZ = 0;
+	float posX = 0;
+	float posY = 0;
+	float posZ = 0;
 
-	double aX = 0;
-	double aY = 0;
+	float aX = 0;
+	float aY = 0;
+	float aZ = 0;
 
-	const double moveSpeed = 0.02;
+	const float moveSpeed = 0.02;
 
 	int moveAlongX = 0;
 	int moveAlongY = 0;
 	int moveAlongZ = 0;
+	int rotateZ = 0;
 
 	bool refresh = false;
 	void init() {
@@ -176,6 +180,10 @@ struct DrawPlane {
 	}
 
 	void applyMoves() {
+		if (rotateZ != 0) {
+			aZ += App.pointerSpeed * rotateZ;
+		}
+
 		if (moveAlongX != 0 || moveAlongZ != 0 || moveAlongY != 0) {
 
 			Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
@@ -197,14 +205,22 @@ struct DrawPlane {
 
 	void pointerUpdate(float dX, float dY) {
 		// sic! - moving left-right (pointer X) rotates around axis Y, and pointer Y around axis X
-		aY += 0.2 * dX;
-		aX += 0.2 * dY;
+		boolean rotateZAxis = false;
+		
+		if (rotateZAxis) {
+			aY += App.pointerSpeed * dX;
+			aX += App.pointerSpeed * dY;
+		}
+		else {
+			aY += App.pointerSpeed * dX;
+			aX += App.pointerSpeed * dY;
+		}
 
 		cout << "aX:" << aX << "\t" << "aY:" << aY << "\n";
 	}
 
-	void updateFov(double newFov) {
-		fov = max<double>(min<double>(newFov, fovMax), fovMin);
+	void updateFov(float newFov) {
+		fov = max<float>(min<float>(newFov, fovMax), fovMin);
 		refresh = true;
 	}
 
@@ -248,8 +264,10 @@ struct DrawPlane {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
 
+		glRotatef(aZ, 0, 0, 1);
 		glRotatef(aX, 1, 0, 0);
 		glRotatef(aY, 0, 1, 0);
+		
 		
 		glTranslatef(-posX, -posY, -posZ);
 
@@ -301,7 +319,6 @@ struct DrawPlane {
 };
 
 int main(int argc, char** argv) {
-
 	if (!App.startSDL()) {
 		cout << "Failed to start, error: " << App.lastError << endl;
 		return 1;
@@ -317,8 +334,6 @@ int main(int argc, char** argv) {
 	
 	const int FPS = 60;
 	int milis = 1000 / 60;
-
-	
 
 	for (;;) {
 		SDL_Event event;
@@ -351,6 +366,12 @@ int main(int argc, char** argv) {
 				else if (keyEvent->key == SDLK_S) {
 					d.moveAlongZ = 1;
 				}
+				else if (keyEvent->key == SDLK_Q) {
+					d.rotateZ = -1;
+				}
+				else if (keyEvent->key == SDLK_E) {
+					d.rotateZ = 1;
+				}
 				else if (keyEvent->key == SDLK_SPACE) {
 					d.moveAlongY = 1;
 				}
@@ -377,6 +398,9 @@ int main(int argc, char** argv) {
 				}
 				else if (keyEvent->key == SDLK_SPACE || keyEvent->key == SDLK_LSHIFT) {
 					d.moveAlongY = 0;
+				}
+				else if (keyEvent->key == SDLK_Q || keyEvent->key == SDLK_E) {
+					d.rotateZ = 0;
 				}
 			}
 
