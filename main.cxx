@@ -190,39 +190,47 @@ struct DrawPlane {
 		refresh = true;
 	}
 
+	void applyMovesXYZ() {
+		Vec3F vRotated = { 0,0,0 };
+		Vec3F v = { moveAlongX * moveSpeed, 0, moveAlongZ * moveSpeed };
+
+		M44 mX;	mX.asRotateX(rad(-aX));
+		M44 m; m.asRotateY(rad(-aY));
+
+		m.Mult(mX);
+
+		vRotated = m.ApplyOnPoint(v);
+
+		posX += vRotated.x;
+		posY += moveAlongY * moveSpeed;
+		posZ += vRotated.z;
+	}
+
+	void applyMovesHybrid() {
+		Vec3F vRotated = { 0,0,0 };
+		Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
+
+		M44 mX; mX.asRotateX(rad(-aX));
+		M44 m; m.asRotateY(rad(-aY));
+
+		m.Mult(mX);
+
+		vRotated = m.ApplyOnPoint(v);
+		posX += vRotated.x;
+		posY += vRotated.y;
+		posZ += vRotated.z;
+	}
+
 	void applyMoves() {
-		if (moveAlongX != 0 || moveAlongZ != 0 || moveAlongY != 0) {
+		if (moveAlongX == 0 && moveAlongZ == 0 && moveAlongY == 0) {
+			return;
+		}
 
-			Vec3F vRotated = { 0,0,0 };
-			if (movement == MoveHybrid) {
-				Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
-
-				M44 mX;
-				mX.asRotateX(rad(-aX));
-				M44 m;
-				m.asRotateY(rad(-aY));
-
-				m.Mult(mX);
-
-				vRotated = m.ApplyOnPoint(v);
-			}
-			else if (movement == MoveXYZ) {
-				Vec3F v = { moveAlongX * moveSpeed, 0, moveAlongZ * moveSpeed };
-
-				M44 mX;
-				mX.asRotateX(rad(-aX));
-				M44 m;
-				m.asRotateY(rad(-aY));
-
-				m.Mult(mX);
-
-				vRotated = m.ApplyOnPoint(v);
-				vRotated.y += moveAlongY * moveSpeed;
-			}
-			
-			posX += vRotated.x;
-			posY += vRotated.y;
-			posZ += vRotated.z;
+		if (movement == MoveXYZ) {
+			applyMovesXYZ();
+		}
+		else if (movement == MoveHybrid) {
+			applyMovesHybrid();
 		}
 	}
 
@@ -232,6 +240,10 @@ struct DrawPlane {
 		aY += App.pointerSpeed * dX;
 		aX += App.pointerSpeed * dY;
 
+		if (movement == MoveHybrid || movement == MoveXYZ) {
+			if (aX < -90) aX = -90;
+			if (aX > 90) aX = 90;
+		}
 	}
 
 	void updateFov(float newFov) {
@@ -285,7 +297,11 @@ struct DrawPlane {
 		
 		glTranslatef(-posX, -posY, -posZ);
 
-		drawGrid();
+		glColor3f(0.3, 0.3, 0.3);
+		drawGrid(0);
+
+		glColor3f(0.3, 0.3, 0.5);
+		drawGrid(3);
 
 		glPushMatrix();
 			glTranslatef(0, 0, -3);
@@ -312,20 +328,18 @@ struct DrawPlane {
 		glPopMatrix();
 	}
 
-	void drawGrid() {
-		float c = 0.3;
-		glColor3f(c, c, c);
+	void drawGrid(GLfloat y) {
 		for (int x = -10; x <= 10; ++x) {
 			glBegin(GL_LINES);
-			glVertex3f(x, 0, -10);
-			glVertex3f(x, 0, 10);
+			glVertex3f(x, y, -10);
+			glVertex3f(x, y, 10);
 			glEnd();
 		}
 
 		for (int z = -10; z <= 10; ++z) {
 			glBegin(GL_LINES);
-			glVertex3f(-10, 0, z);
-			glVertex3f(10, 0, z);
+			glVertex3f(-10, y, z);
+			glVertex3f(10, y, z);
 			glEnd();
 		}
 	}
