@@ -209,19 +209,49 @@ struct DrawPlane {
 
 	void pointerUpdate(float dX, float dY) {
 		// sic! - moving left-right (pointer X) rotates around axis Y, and pointer Y around axis X
-		boolean rewriteAngles = true;
+
+		aY += App.pointerSpeed * dX;
+		aX += App.pointerSpeed * dY;
+
 		
-		if (rewriteAngles) {
+		// take vector [0,0,1]; rotate it along Y and X to have directional vector; then rotate matrix along Z and diffY and diffX; from result take aY and aX to match angles along axis
+		// initial step is withou Z axis, to check if values behave the same
+		Vec3F base = { 0, 0, 1 };
+			
+		M44 m; m.asRotateX(0);
+		M44 mX;
+		M44 mY;
 			
 
+		mX.asRotateX(rad(-(aX)));
+		mY.asRotateY(rad(-(aY)));
 
-		}
-		else {
-			aY += App.pointerSpeed * dX;
-			aX += App.pointerSpeed * dY;
-		}
+		m.Mult(mX);
+		m.Mult(mY);
 
-		cout << "aX:" << aX << "\t" << "aY:" << aY << "\n";
+		Vec3F rotated = m.ApplyOnPoint(base);
+
+		rotated.Print();
+
+		M44 rMY;
+		M44 rMX;
+		M44 rM;
+
+		rMX.asRotateX(rad(aX));
+		rMY.asRotateY(rad(aY));
+
+		rM.asRotateX(0);
+		
+		rM.Mult(rMY);
+		rM.Mult(rMX);
+
+		Vec3F reversed = rM.ApplyOnPoint(rotated);
+
+		reversed.Print(); // should be close to [0,0,1]
+		cout << "--\n";
+
+
+//		cout << "aX:" << aX << "\t" << "aY:" << aY << "\n";
 	}
 
 	void updateFov(float newFov) {
