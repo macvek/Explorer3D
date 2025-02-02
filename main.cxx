@@ -205,11 +205,11 @@ struct DrawPlane {
 
 	void pointerUpdate(float dX, float dY) {
 		// sic! - moving left-right (pointer X) rotates around axis Y, and pointer Y around axis X
-		boolean rotateZAxis = false;
+		boolean rewriteAngles = true;
 		
-		if (rotateZAxis) {
-			aY += App.pointerSpeed * dX;
-			aX += App.pointerSpeed * dY;
+		if (rewriteAngles) {
+			// take vector [0,0,1]; rotate it along Y and X to have directional vector; then rotate matrix along Z and diffY and diffX; from result take aY and aX to match angles along axis
+
 		}
 		else {
 			aY += App.pointerSpeed * dX;
