@@ -227,6 +227,12 @@ struct DrawPlane {
 		m.Mult(mX);
 
 		rotated = m.ApplyOnPoint(base);
+
+		float radCalcAY = atan2(rotated.x, rotated.z);
+		float calcAY = deg(radCalcAY);
+
+		cout << "aX:" << aX << "\t" << "aY:" << aY << "\n";
+
 	}
 
 	void updateFov(float newFov) {
