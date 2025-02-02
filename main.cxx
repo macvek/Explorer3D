@@ -150,10 +150,11 @@ void AppContext::stopSDL() {
 	SDL_Quit();
 }
 
+// Determines which coordinates are used for angle and movement calculation
 enum MovementStrategy {
-	MoveHybrid, // goes towards direction, up is relative up; but rotates along Y axis with a perception of looking down
+	MoveHybrid,		// goes towards direction, up is relative up; but rotates along Y axis with a perception of looking down
 	MoveFreespace,	// as if it space ship; all rotations are relative to observer
-	MoveXYZ,	// looking around with respect to top/bottom, moving on XZ plane, moving Up/Down only with dedicated commands
+	MoveXYZ,		// looking around with respect to top/bottom, moving on XZ plane, moving Up/Down only with dedicated commands
 };
 
 struct DrawPlane {
