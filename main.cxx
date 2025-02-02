@@ -223,8 +223,8 @@ struct DrawPlane {
 		M44 mX; mX.asRotateX(rad(aX));
 		M44 mY; mY.asRotateY(rad(aY));
 			
-		m.Mult(mX);
 		m.Mult(mY);
+		m.Mult(mX);
 
 		rotated = m.ApplyOnPoint(base);
 	}
