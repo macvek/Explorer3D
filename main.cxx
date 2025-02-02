@@ -280,10 +280,9 @@ struct DrawPlane {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
 
-		glRotatef(aZ, 0, 0, 1);
 		glRotatef(aX, 1, 0, 0);
 		glRotatef(aY, 0, 1, 0);
-		
+		glRotatef(aZ, 0, 0, 1);
 		
 		glTranslatef(-posX, -posY, -posZ);
 
@@ -377,12 +376,6 @@ int main(int argc, char** argv) {
 				SDL_KeyboardEvent* keyEvent = (SDL_KeyboardEvent*)&event;
 				if (false) {}
 				
-				else if (keyEvent->key == SDLK_LEFT) {
-					d.pointerUpdate(-1, 0);
-				}
-				else if (keyEvent->key == SDLK_RIGHT) {
-					d.pointerUpdate(1, 0);
-				}
 				else if (keyEvent->key == SDLK_A) {
 					d.moveAlongX = -1;
 				}
