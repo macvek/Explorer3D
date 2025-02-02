@@ -69,9 +69,9 @@ struct M44 {
 	}
 
 	Vec3F ApplyOnPoint(Vec3F& p) {
-		GLfloat nX = m[0][0] * p.x + m[0][1] * p.y + m[0][2] * p.z + m[0][3];
-		GLfloat nY = m[1][0] * p.x + m[1][1] * p.y + m[1][2] * p.z + m[1][3];
-		GLfloat nZ = m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3];
+		double nX = m[0][0] * p.x + m[0][1] * p.y + m[0][2] * p.z + m[0][3];
+		double nY = m[1][0] * p.x + m[1][1] * p.y + m[1][2] * p.z + m[1][3];
+		double nZ = m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3];
 
 		return Vec3F{ nX , nY, nZ };
 	}
@@ -176,6 +176,7 @@ struct DrawPlane {
 	int moveAlongY = 0;
 	int moveAlongZ = 0;
 	int rotateZ = 0;
+	Vec3F rotated = { 0,0,0 };
 
 	bool refresh = false;
 	void init() {
@@ -225,24 +226,7 @@ struct DrawPlane {
 		m.Mult(mX);
 		m.Mult(mY);
 
-		Vec3F rotated = m.ApplyOnPoint(base);
-
-		float radCalcAY = atan2(rotated.x, rotated.z);
-		float calcAY = deg(radCalcAY);
-
-		M44 rMY; rMY.asRotateY(-radCalcAY);
-		Vec3F reversedY = rMY.ApplyOnPoint(rotated);
-		
-		float radCalcAX = atan2(-rotated.y, rotated.z);
-		float calcAX = deg(radCalcAX);
-
-		reversedY.Print();
-
-		cout << "--\n";
-
-		cout << "CALC AY: " << calcAY << "\n";
-		cout << "CALC AX: " << calcAX << "\n";
-		cout << "aX:" << aX << "\t" << "aY:" << aY << "\n";
+		rotated = m.ApplyOnPoint(base);
 	}
 
 	void updateFov(float newFov) {
@@ -303,6 +287,13 @@ struct DrawPlane {
 			glTranslatef(0, 0, -3);
 			drawQuad();
 		glPopMatrix();
+
+		glBegin(GL_LINES);
+		glColor4f(1, 1, 0, 1);
+		glVertex3f(0, 0, 0);
+		glColor4f(1, 0, 1, 1);
+		glVertex3f(rotated.x, rotated.y, -rotated.z);
+		glEnd();
 		
 		SDL_GL_SwapWindow(App.window);
 	}
@@ -329,15 +320,15 @@ struct DrawPlane {
 		glColor3f(c, c, c);
 		for (int x = -10; x <= 10; ++x) {
 			glBegin(GL_LINES);
-			glVertex3f(x, -0.2, -10);
-			glVertex3f(x, -0.2, 10);
+			glVertex3f(x, 0, -10);
+			glVertex3f(x, 0, 10);
 			glEnd();
 		}
 
 		for (int z = -10; z <= 10; ++z) {
 			glBegin(GL_LINES);
-			glVertex3f(-10, -0.2, z);
-			glVertex3f(10, -0.2, z);
+			glVertex3f(-10, 0, z);
+			glVertex3f(10, 0, z);
 			glEnd();
 		}
 	}
@@ -380,6 +371,12 @@ int main(int argc, char** argv) {
 				SDL_KeyboardEvent* keyEvent = (SDL_KeyboardEvent*)&event;
 				if (false) {}
 				
+				else if (keyEvent->key == SDLK_LEFT) {
+					d.pointerUpdate(-1, 0);
+				}
+				else if (keyEvent->key == SDLK_RIGHT) {
+					d.pointerUpdate(1, 0);
+				}
 				else if (keyEvent->key == SDLK_A) {
 					d.moveAlongX = -1;
 				}
