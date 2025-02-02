@@ -244,7 +244,7 @@ struct DrawPlane {
 	}
 
 	void pointerUpdateFreespace(float dX, float dY) {
-
+		// normalize UP vector and aY to global coordinates;
 	}
 
 	void pointerUpdate(float dX, float dY) {
@@ -296,6 +296,9 @@ struct DrawPlane {
 	}
 
 	void eyeCoordsFreespace() {
+		// rotate to make UP vector facing [0,1,0] 
+		// rotate along Y axis
+
 
 	}
 
