@@ -240,7 +240,7 @@ struct DrawPlane {
 		if (movement == MoveXYZ) {
 			applyMovesXYZ();
 		}
-		else if (movement == MoveHybrid) {
+		else if (movement == MoveHybrid || movement == MoveFreespace) {
 			applyMovesHybrid();
 		}
 	}
