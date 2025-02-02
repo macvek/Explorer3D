@@ -234,15 +234,25 @@ struct DrawPlane {
 		}
 	}
 
-	void pointerUpdate(float dX, float dY) {
+	void pointerUpdateHybridXYZ(float dX, float dY) {
 		// sic! - moving left-right (pointer X) rotates around axis Y, and pointer Y around axis X
-
 		aY += App.pointerSpeed * dX;
 		aX += App.pointerSpeed * dY;
 
+		if (aX < -90) aX = -90;
+		if (aX > 90) aX = 90;
+	}
+
+	void pointerUpdateFreespace(float dX, float dY) {
+
+	}
+
+	void pointerUpdate(float dX, float dY) {
 		if (movement == MoveHybrid || movement == MoveXYZ) {
-			if (aX < -90) aX = -90;
-			if (aX > 90) aX = 90;
+			pointerUpdateHybridXYZ(dX, dY);
+		}
+		else if (movement == MoveFreespace) {
+			pointerUpdateFreespace(dX, dY);
 		}
 	}
 
@@ -279,6 +289,16 @@ struct DrawPlane {
 		return 180 / M_PI * rad;
 	}
 
+	void eyeCoordsHybridXYZ() {
+		glRotatef(aX, 1, 0, 0);
+		glRotatef(aY, 0, 1, 0);
+		glRotatef(aZ, 0, 0, 1);
+	}
+
+	void eyeCoordsFreespace() {
+
+	}
+
 	void frame() {
 		++frames;
 
@@ -291,9 +311,13 @@ struct DrawPlane {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
 
-		glRotatef(aX, 1, 0, 0);
-		glRotatef(aY, 0, 1, 0);
-		glRotatef(aZ, 0, 0, 1);
+		if (movement == MoveHybrid || movement == MoveXYZ) {
+			eyeCoordsHybridXYZ();
+		}
+		if (movement == MoveFreespace) {
+			eyeCoordsFreespace();
+		}
+		
 		
 		glTranslatef(-posX, -posY, -posZ);
 
@@ -428,6 +452,10 @@ int main(int argc, char** argv) {
 				else if (keyEvent->key == SDLK_9) {
 					d.movement = MoveXYZ;
 					cout << "Movement: xyz\n";
+				}
+				else if (keyEvent->key == SDLK_0) {
+					d.movement = MoveFreespace;
+					cout << "Movement: freespace\n";
 				}
 			}
 
