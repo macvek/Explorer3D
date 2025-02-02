@@ -247,10 +247,10 @@ struct DrawPlane {
 		rM.Mult(rMY);
 		rM.Mult(rMX);
 
-		Vec3F reversedY = rMY.ApplyOnPoint(rotated);
-		double calcAX = deg(atan2(rotated.y, rotated.z));
+		Vec3F reversedX = rMX.ApplyOnPoint(rotated);
+		double calcAX = deg(atan2(reversedX.y, reversedX.z));
 
-		Vec3F reversedYX = rMX.ApplyOnPoint(reversedY); // should equal to reversed
+		Vec3F reversedYX = rMY.ApplyOnPoint(reversedX); // should equal to reversed
 		Vec3F reversed = rM.ApplyOnPoint(rotated);
 
 		reversed.Print(); // should be close to [0,0,1]
