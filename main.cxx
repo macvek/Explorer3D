@@ -150,8 +150,15 @@ void AppContext::stopSDL() {
 	SDL_Quit();
 }
 
+enum MovementStrategy {
+	MoveHybrid, // goes towards direction, up is relative up; but rotates along Y axis with a perception of looking down
+	MoveFreespace,	// as if it space ship; all rotations are relative to observer
+	MoveXYZ,	// looking around with respect to top/bottom, moving on XZ plane, moving Up/Down only with dedicated commands
+};
+
 struct DrawPlane {
 
+	MovementStrategy movement = MoveHybrid;
 	const int fovDiff = 1;
 	const float fovMax = 160;
 	const float fovMin = 5;
@@ -175,9 +182,7 @@ struct DrawPlane {
 	int moveAlongX = 0;
 	int moveAlongY = 0;
 	int moveAlongZ = 0;
-	int rotateZ = 0;
-	Vec3F rotated = { 0,0,0 };
-
+	
 	bool refresh = false;
 	void init() {
 		glViewport(0, 0, App.width, App.height);
@@ -185,22 +190,34 @@ struct DrawPlane {
 	}
 
 	void applyMoves() {
-		if (rotateZ != 0) {
-			aZ += App.pointerSpeed * rotateZ;
-		}
-
 		if (moveAlongX != 0 || moveAlongZ != 0 || moveAlongY != 0) {
 
-			Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
+			Vec3F vRotated = { 0,0,0 };
+			if (movement == MoveHybrid) {
+				Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
 
-			M44 mX; 
-			mX.asRotateX(rad(-aX));
-			M44 m;
-			m.asRotateY(rad(-aY));
+				M44 mX;
+				mX.asRotateX(rad(-aX));
+				M44 m;
+				m.asRotateY(rad(-aY));
 
-			m.Mult(mX);
+				m.Mult(mX);
 
-			Vec3F vRotated =  m.ApplyOnPoint(v);
+				vRotated = m.ApplyOnPoint(v);
+			}
+			else if (movement == MoveXYZ) {
+				Vec3F v = { moveAlongX * moveSpeed, 0, moveAlongZ * moveSpeed };
+
+				M44 mX;
+				mX.asRotateX(rad(-aX));
+				M44 m;
+				m.asRotateY(rad(-aY));
+
+				m.Mult(mX);
+
+				vRotated = m.ApplyOnPoint(v);
+				vRotated.y += moveAlongY * moveSpeed;
+			}
 			
 			posX += vRotated.x;
 			posY += vRotated.y;
@@ -213,25 +230,6 @@ struct DrawPlane {
 
 		aY += App.pointerSpeed * dX;
 		aX += App.pointerSpeed * dY;
-
-		
-		// take vector [0,0,1]; rotate it along Y and X to have directional vector; then rotate matrix along Z and diffY and diffX; from result take aY and aX to match angles along axis
-		// initial step is withou Z axis, to check if values behave the same
-		Vec3F base = { 0, 0, 1 };
-			
-		M44 m; m.asRotateX(0);
-		M44 mX; mX.asRotateX(rad(aX));
-		M44 mY; mY.asRotateY(rad(aY));
-			
-		m.Mult(mY);
-		m.Mult(mX);
-
-		rotated = m.ApplyOnPoint(base);
-
-		float radCalcAY = atan2(rotated.x, rotated.z);
-		float calcAY = deg(radCalcAY);
-
-		cout << "aX:" << aX << "\t" << "aY:" << aY << "\n";
 
 	}
 
@@ -293,13 +291,6 @@ struct DrawPlane {
 			drawQuad();
 		glPopMatrix();
 
-		glBegin(GL_LINES);
-		glColor4f(1, 1, 0, 1);
-		glVertex3f(0, 0, 0);
-		glColor4f(1, 0, 1, 1);
-		glVertex3f(rotated.x, rotated.y, -rotated.z);
-		glEnd();
-		
 		SDL_GL_SwapWindow(App.window);
 	}
 
@@ -388,12 +379,6 @@ int main(int argc, char** argv) {
 				else if (keyEvent->key == SDLK_S) {
 					d.moveAlongZ = 1;
 				}
-				else if (keyEvent->key == SDLK_Q) {
-					d.rotateZ = -1;
-				}
-				else if (keyEvent->key == SDLK_E) {
-					d.rotateZ = 1;
-				}
 				else if (keyEvent->key == SDLK_SPACE) {
 					d.moveAlongY = 1;
 				}
@@ -421,8 +406,13 @@ int main(int argc, char** argv) {
 				else if (keyEvent->key == SDLK_SPACE || keyEvent->key == SDLK_LSHIFT) {
 					d.moveAlongY = 0;
 				}
-				else if (keyEvent->key == SDLK_Q || keyEvent->key == SDLK_E) {
-					d.rotateZ = 0;
+				else if (keyEvent->key == SDLK_8) {
+					d.movement = MoveHybrid;
+					cout << "Movement: hybrid\n";
+				}
+				else if (keyEvent->key == SDLK_9) {
+					d.movement = MoveXYZ;
+					cout << "Movement: xyz\n";
 				}
 			}
 
