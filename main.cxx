@@ -222,12 +222,17 @@ struct DrawPlane {
 		Vec3F vRotated = { 0,0,0 };
 		Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
 
+		M44 m; m.asRotateX(0);
+
 		M44 mX; mX.asRotateX(rad(-aX));
-		M44 mYX; mYX.asRotateY(rad(-aY));
+		M44 mY; mY.asRotateY(rad(-aY));
+		M44 mZ; mZ.asRotateZ(rad(-aZ));
 
-		mYX.Mult(mX);
+		m.Mult(mY);
+		m.Mult(mX);
+		m.Mult(mZ);
 
-		vRotated = mYX.ApplyOnPoint(v);
+		vRotated = m.ApplyOnPoint(v);
 		posX += vRotated.x;
 		posY += vRotated.y;
 		posZ += vRotated.z;
@@ -293,19 +298,15 @@ struct DrawPlane {
 
 	void vectorsToAngles(Vec3F& fwd, Vec3F& up) {
 		
-		cout << "FWD:"; fwd.Print();
-		cout << " UP:"; up.Print();
 		float radY = atan2(fwd.x, fwd.z);
 
 		M44 revY; revY.asRotateY(-radY);
 		Vec3F rotatedX = revY.ApplyOnPoint(fwd);
-		rotatedX.Print();
 
 		float radX = atan2(-rotatedX.y, rotatedX.z);
 
 		aX = deg(radX);
 		aY = deg(radY);
-
 		
 		M44 mX; mX.asRotateX(rad(-aX));
 		M44 mY; mY.asRotateY(rad(-aY));
@@ -316,14 +317,9 @@ struct DrawPlane {
 		m.Mult(mY);
 
 		Vec3F revUp = m.ApplyOnPoint(up);
-		cout << "rUP:"; revUp.Print();
 
 		float radZ = atan2(-revUp.y, revUp.x);
 		aZ = deg(radZ)+90; // up vector points UP so move it back to zero with +90
-		
-
-
-		cout << "--\n";
 	}
 
 	void pointerUpdate(float dX, float dY) {
