@@ -225,9 +225,9 @@ struct DrawPlane {
 	void traceLine(int x, int y) {
 		M44 m; m.asRotateX(0);
 
-		M44 mX; mX.asRotateX(rad(-aX));
-		M44 mY; mY.asRotateY(rad(-aY));
-		M44 mZ; mZ.asRotateZ(rad(-aZ));
+		M44 mX; mX.asRotateX(rad(aX));
+		M44 mY; mY.asRotateY(rad(aY));
+		M44 mZ; mZ.asRotateZ(rad(aZ));
 
 		M44 mT; mT.asTranslate(posX, posY, posZ);
 
