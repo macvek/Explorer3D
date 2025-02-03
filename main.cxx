@@ -1,6 +1,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h> // only include this one in the source file with main()!
 #include <iostream>
+#include <vector>
 
 #include <Windows.h>
 #include <gl/gl.h>
@@ -52,6 +53,13 @@ struct M44 {
 		m[1][0] = sin(phi);	  m[1][1] = cos(phi);	m[1][2] = 0; m[1][3] = 0;
 		m[2][0] = 0;		  m[2][1] = 0;			m[2][2] = 1; m[2][3] = 0;
 		m[3][0] = 0;		  m[3][1] = 0;			m[3][2] = 0; m[3][3] = 1;
+	}
+
+	void asTranslate(GLfloat x, GLfloat y, GLfloat z) {
+		m[0][0] = 1; m[0][1] = 0; m[0][2] = 0; m[0][3] = x;
+		m[1][0] = 0; m[1][1] = 1; m[1][2] = 0; m[1][3] = y;
+		m[2][0] = 0; m[2][1] = 0; m[2][2] = 1; m[2][3] = z;
+		m[3][0] = 0; m[3][1] = 0; m[3][2] = 0; m[3][3] = 1;
 	}
 
 	void FillFrom(M44& s) {
@@ -181,6 +189,7 @@ enum MovementStrategy {
 
 struct DrawPlane {
 
+	vector<pair<Vec3F, Vec3F>> lines;
 	MovementStrategy movement = MoveHybrid;
 	const int fovDiff = 1;
 	const float fovMax = 160;
@@ -211,6 +220,32 @@ struct DrawPlane {
 	void init() {
 		glViewport(0, 0, App.width, App.height);
 		refresh = true;
+	}
+
+	void traceLine(int x, int y) {
+		M44 m; m.asRotateX(0);
+
+		M44 mX; mX.asRotateX(rad(-aX));
+		M44 mY; mY.asRotateY(rad(-aY));
+		M44 mZ; mZ.asRotateZ(rad(-aZ));
+
+		M44 mT; mT.asTranslate(posX, posY, posZ);
+
+		m.Mult(mT);
+		
+		m.Mult(mX);
+		m.Mult(mY);
+		m.Mult(mZ);
+
+		pair<Vec3F, Vec3F> p;
+
+		Vec3F lineStart = { 0,0,-nearPlane };
+		Vec3F lineEnd = { 0,0,-farPlane };
+		p.first = m.ApplyOnPoint(lineStart);
+		p.second = m.ApplyOnPoint(lineEnd);
+		p.first.Print();
+		p.second.Print();
+		lines.push_back(p);
 	}
 
 	void applyMovesXYZ() {
@@ -408,6 +443,13 @@ struct DrawPlane {
 			drawQuad();
 		glPopMatrix();
 
+		glBegin(GL_LINES);
+		for (auto p = lines.cbegin(); p < lines.cend(); ++p) {
+			glColor3f(0, 1, 1); glVertex3f(p->first.x, p->first.y, p->first.z);
+			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
+		}
+		glEnd();
+
 		SDL_GL_SwapWindow(App.window);
 	}
 
@@ -471,6 +513,9 @@ int main(int argc, char** argv) {
 		if (SDL_PollEvent(&event)) {
 			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
+				if (mouseEvent->button == SDL_BUTTON_LEFT && !App.mouseCaptureMode) {
+					d.traceLine(mouseEvent->x, mouseEvent->y);
+				}
 				if (mouseEvent->button == SDL_BUTTON_RIGHT) {
 					App.mouseCapture(!App.mouseCaptureMode);
 				}
@@ -548,6 +593,7 @@ int main(int argc, char** argv) {
 				}
 				else if (keyEvent->key == SDLK_9) {
 					d.movement = MoveXYZ;
+					d.aZ = 0;
 					cout << "Movement: xyz\n";
 				}
 				else if (keyEvent->key == SDLK_0) {
