@@ -296,19 +296,34 @@ struct DrawPlane {
 		cout << "FWD:"; fwd.Print();
 		cout << " UP:"; up.Print();
 		float radY = atan2(fwd.x, fwd.z);
-		cout << deg(radY) << "\n";
 
 		M44 revY; revY.asRotateY(-radY);
 		Vec3F rotatedX = revY.ApplyOnPoint(fwd);
 		rotatedX.Print();
 
 		float radX = atan2(-rotatedX.y, rotatedX.z);
-		cout << deg(radX) << "\n";
-		cout << "--\n";
 
 		aX = deg(radX);
 		aY = deg(radY);
+
 		
+		M44 mX; mX.asRotateX(rad(-aX));
+		M44 mY; mY.asRotateY(rad(-aY));
+		
+		M44 m; m.asRotateX(0);
+
+		m.Mult(mX);
+		m.Mult(mY);
+
+		Vec3F revUp = m.ApplyOnPoint(up);
+		cout << "rUP:"; revUp.Print();
+
+		float radZ = atan2(-revUp.y, revUp.x);
+		aZ = deg(radZ)+90; // up vector points UP so move it back to zero with +90
+		
+
+
+		cout << "--\n";
 	}
 
 	void pointerUpdate(float dX, float dY) {
