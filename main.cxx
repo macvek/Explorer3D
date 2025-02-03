@@ -293,7 +293,8 @@ struct DrawPlane {
 
 	void vectorsToAngles(Vec3F& fwd, Vec3F& up) {
 		
-		fwd.Print();
+		cout << "FWD:"; fwd.Print();
+		cout << " UP:"; up.Print();
 		float radY = atan2(fwd.x, fwd.z);
 		cout << deg(radY) << "\n";
 
