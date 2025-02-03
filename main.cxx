@@ -119,8 +119,19 @@ struct AppContext {
 	string lastError;
 	OpenGLProperties openglProperties;
 
+	bool mouseCaptureMode;
+
 	bool startSDL();
 	void stopSDL();
+	void mouseCapture(bool newState) {
+		SDL_SetWindowRelativeMouseMode(App.window, newState);
+		
+		if (mouseCaptureMode && false == newState) {
+			SDL_WarpMouseInWindow(window, width / 2, height / 2);
+		}
+
+		mouseCaptureMode = newState;
+	}
 } App;
 
 bool AppContext::startSDL() {
@@ -364,7 +375,7 @@ struct DrawPlane {
 		return 180 / M_PI * rad;
 	}
 
-	void eyeCoords() {
+	void eyeCoords() const {
 		glRotatef(aZ, 0, 0, 1);
 		glRotatef(aX, 1, 0, 0);
 		glRotatef(aY, 0, 1, 0);
@@ -400,7 +411,7 @@ struct DrawPlane {
 		SDL_GL_SwapWindow(App.window);
 	}
 
-	void drawQuad() {
+	void drawQuad() const {
 		glPushMatrix();
 		GLdouble spin = 0.2 * frames;
 		
@@ -445,19 +456,26 @@ int main(int argc, char** argv) {
 	}
 
 	App.openglProperties.toStream(cout);
-	SDL_SetWindowRelativeMouseMode(App.window, true);
-
+	
 	bool showEvent = false;
 	DrawPlane d;
 
 	d.init();
-	
+	App.mouseCapture(true);
+
 	const int FPS = 60;
 	int milis = 1000 / FPS;
 	d.movement = MoveFreespace;
 	for (;;) {
 		SDL_Event event;
 		if (SDL_PollEvent(&event)) {
+			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
+				if (mouseEvent->button == SDL_BUTTON_RIGHT) {
+					App.mouseCapture(!App.mouseCaptureMode);
+				}
+			}
+			
 			if (event.type == SDL_EVENT_WINDOW_RESIZED) {
 				SDL_WindowEvent* windowEvent = (SDL_WindowEvent*)&event;
 				App.width = windowEvent->data1;
@@ -467,7 +485,9 @@ int main(int argc, char** argv) {
 			
 			if (event.type == SDL_EVENT_MOUSE_MOTION) {
 				SDL_MouseMotionEvent* mouseEvent = (SDL_MouseMotionEvent*) &event;
-				d.pointerUpdate(mouseEvent->xrel, mouseEvent->yrel);
+				if (App.mouseCaptureMode) {
+					d.pointerUpdate(mouseEvent->xrel, mouseEvent->yrel);
+				}
 			}
 			
 			if (event.type == SDL_EVENT_KEY_DOWN) {
