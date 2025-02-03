@@ -187,7 +187,7 @@ struct DrawPlane {
 
 	float aX = 0;
 	float aY = 0;
-	float aZ = 30;
+	float aZ = 0;
 
 	const float moveSpeed = 0.02;
 
@@ -267,7 +267,7 @@ struct DrawPlane {
 		// apply current rotations
 		M44 mX; mX.asRotateX(rad(aX));
 		M44 mY; mY.asRotateY(rad(aY));
-		M44 mZ; mZ.asRotateZ(rad(aZ));
+		M44 mZ; mZ.asRotateZ(rad(-aZ));
 
 		M44 mOY; mOY.asRotateY(rad(oY));
 		M44 mOX; mOX.asRotateX(rad(oX));
@@ -442,7 +442,7 @@ int main(int argc, char** argv) {
 	
 	const int FPS = 60;
 	int milis = 1000 / FPS;
-
+	d.movement = MoveFreespace;
 	for (;;) {
 		SDL_Event event;
 		if (SDL_PollEvent(&event)) {
