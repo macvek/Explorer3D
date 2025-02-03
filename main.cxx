@@ -233,8 +233,8 @@ struct DrawPlane {
 
 		m.Mult(mT);
 		
-		m.Mult(mX);
 		m.Mult(mY);
+		m.Mult(mX);
 		m.Mult(mZ);
 
 		pair<Vec3F, Vec3F> p;
@@ -252,9 +252,11 @@ struct DrawPlane {
 		Vec3F vRotated = { 0,0,0 };
 		Vec3F v = { moveAlongX * moveSpeed, 0, moveAlongZ * moveSpeed };
 
-		M44 mX;	mX.asRotateX(rad(-aX));
-		M44 m; m.asRotateY(rad(-aY));
+		M44 m; m.asRotateX(0);
+		M44 mX;	mX.asRotateX(rad(aX));
+		M44 mY; mY.asRotateY(rad(aY));
 
+		m.Mult(mY);
 		m.Mult(mX);
 
 		vRotated = m.ApplyOnPoint(v);
@@ -270,9 +272,9 @@ struct DrawPlane {
 
 		M44 m; m.asRotateX(0);
 
-		M44 mX; mX.asRotateX(rad(-aX));
-		M44 mY; mY.asRotateY(rad(-aY));
-		M44 mZ; mZ.asRotateZ(rad(-aZ));
+		M44 mX; mX.asRotateX(rad(aX));
+		M44 mY; mY.asRotateY(rad(aY));
+		M44 mZ; mZ.asRotateZ(rad(aZ));
 
 		m.Mult(mY);
 		m.Mult(mX);
@@ -303,22 +305,21 @@ struct DrawPlane {
 
 	void pointerUpdateHybridXYZ(float dX, float dY) {
 		// sic! - moving left-right (pointer X) rotates around axis Y, and pointer Y around axis X
-		aY += App.pointerSpeed * dX;
-		aX += App.pointerSpeed * dY;
+		aY += App.pointerSpeed * -dX;
+		aX += App.pointerSpeed * -dY;
 
 		if (aX < -90) aX = -90;
 		if (aX > 90) aX = 90;
 	}
 
 	void pointerUpdateFreespace(float dX, float dY) {
-		float oY = App.pointerSpeed * dX;
-		float oX = App.pointerSpeed * dY;
+		float oY = App.pointerSpeed * -dX;
+		float oX = App.pointerSpeed * -dY;
 
-		
 		// apply current rotations
 		M44 mX; mX.asRotateX(rad(aX));
 		M44 mY; mY.asRotateY(rad(aY));
-		M44 mZ; mZ.asRotateZ(rad(-aZ));
+		M44 mZ; mZ.asRotateZ(rad(aZ));
 
 		M44 mOY; mOY.asRotateY(rad(oY));
 		M44 mOX; mOX.asRotateX(rad(oX));
@@ -333,7 +334,7 @@ struct DrawPlane {
 		m.Mult(mOX);
 	
 
-		Vec3F fwd = { 0,0,1 };
+		Vec3F fwd = { 0,0,-1 };
 		Vec3F up = { 0,1,0 };
 
 		Vec3F nFwd = m.ApplyOnPoint(fwd);
@@ -344,12 +345,12 @@ struct DrawPlane {
 
 	void vectorsToAngles(Vec3F& fwd, Vec3F& up) {
 		
-		float radY = atan2(fwd.x, fwd.z);
+		float radY = atan2(-fwd.x, -fwd.z);
 
 		M44 revY; revY.asRotateY(-radY);
 		Vec3F rotatedX = revY.ApplyOnPoint(fwd);
 
-		float radX = atan2(-rotatedX.y, rotatedX.z);
+		float radX = atan2(rotatedX.y, -rotatedX.z);
 
 		aX = deg(radX);
 		aY = deg(radY);
@@ -364,8 +365,8 @@ struct DrawPlane {
 
 		Vec3F revUp = m.ApplyOnPoint(up);
 
-		float radZ = atan2(-revUp.y, revUp.x);
-		aZ = deg(radZ)+90; // up vector points UP so move it back to zero with +90
+		float radZ = atan2(-revUp.x, revUp.y);
+		aZ = deg(radZ);
 	}
 
 	void pointerUpdate(float dX, float dY) {
@@ -411,9 +412,9 @@ struct DrawPlane {
 	}
 
 	void eyeCoords() const {
-		glRotatef(aZ, 0, 0, 1);
-		glRotatef(aX, 1, 0, 0);
-		glRotatef(aY, 0, 1, 0);
+		glRotatef(-aZ, 0, 0, 1);
+		glRotatef(-aX, 1, 0, 0);
+		glRotatef(-aY, 0, 1, 0);
 	}
 
 	void frame() {
@@ -507,7 +508,7 @@ int main(int argc, char** argv) {
 
 	const int FPS = 60;
 	int milis = 1000 / FPS;
-	d.movement = MoveFreespace;
+	d.movement = MoveXYZ;
 	for (;;) {
 		SDL_Event event;
 		if (SDL_PollEvent(&event)) {
@@ -552,10 +553,10 @@ int main(int argc, char** argv) {
 					d.moveAlongZ = 1;
 				}
 				else if (keyEvent->key == SDLK_Q) {
-					d.rotateZ = -1;
+					d.rotateZ = 1;
 				}
 				else if (keyEvent->key == SDLK_E) {
-					d.rotateZ = 1;
+					d.rotateZ = -1;
 				}
 				else if (keyEvent->key == SDLK_SPACE) {
 					d.moveAlongY = 1;
