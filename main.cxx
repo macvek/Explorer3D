@@ -185,15 +185,16 @@ struct DrawPlane {
 	float posY = 0;
 	float posZ = 0;
 
-	float aX = 45;
-	float aY = -30;
-	float aZ = 0;
+	float aX = 0;
+	float aY = 0;
+	float aZ = 30;
 
 	const float moveSpeed = 0.02;
 
 	int moveAlongX = 0;
 	int moveAlongY = 0;
 	int moveAlongZ = 0;
+	int rotateZ = 0;
 	
 	bool refresh = false;
 	void init() {
@@ -222,17 +223,21 @@ struct DrawPlane {
 		Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
 
 		M44 mX; mX.asRotateX(rad(-aX));
-		M44 m; m.asRotateY(rad(-aY));
+		M44 mYX; mYX.asRotateY(rad(-aY));
 
-		m.Mult(mX);
+		mYX.Mult(mX);
 
-		vRotated = m.ApplyOnPoint(v);
+		vRotated = mYX.ApplyOnPoint(v);
 		posX += vRotated.x;
 		posY += vRotated.y;
 		posZ += vRotated.z;
 	}
 
 	void applyMoves() {
+		if (rotateZ) {
+			aZ += 0.8 * rotateZ;
+		}
+		
 		if (moveAlongX == 0 && moveAlongZ == 0 && moveAlongY == 0) {
 			return;
 		}
@@ -260,14 +265,22 @@ struct DrawPlane {
 
 		
 		// apply current rotations
-		M44 mX; mX.asRotateX(rad(aX+oX));
-		M44 mY; mY.asRotateY(rad(aY+oY));
+		M44 mX; mX.asRotateX(rad(aX));
+		M44 mY; mY.asRotateY(rad(aY));
 		M44 mZ; mZ.asRotateZ(rad(aZ));
 
+		M44 mOY; mOY.asRotateY(rad(oY));
+		M44 mOX; mOX.asRotateX(rad(oX));
+
 		M44 m; m.asRotateX(0);
-		m.Mult(mZ);
+		
 		m.Mult(mY);
 		m.Mult(mX);
+		m.Mult(mZ);
+
+		m.Mult(mOY);
+		m.Mult(mOX);
+	
 
 		Vec3F fwd = { 0,0,1 };
 		Vec3F up = { 0,1,0 };
@@ -340,9 +353,9 @@ struct DrawPlane {
 	}
 
 	void eyeCoords() {
+		glRotatef(aZ, 0, 0, 1);
 		glRotatef(aX, 1, 0, 0);
 		glRotatef(aY, 0, 1, 0);
-		glRotatef(aZ, 0, 0, 1);
 	}
 
 	void frame() {
@@ -378,7 +391,10 @@ struct DrawPlane {
 	void drawQuad() {
 		glPushMatrix();
 		GLdouble spin = 0.2 * frames;
-		glRotatef(spin, 1, 0.4, 0.2);
+		
+		glRotatef(spin, 0, 1, 0);
+		glRotatef(45, 1, 0, 0);
+		
 
 		glColor4f(1, 1, 1, 1);
 		glBegin(GL_QUADS);
@@ -423,7 +439,7 @@ int main(int argc, char** argv) {
 	DrawPlane d;
 
 	d.init();
-	d.movement = MoveFreespace;
+	
 	const int FPS = 60;
 	int milis = 1000 / FPS;
 
@@ -458,6 +474,12 @@ int main(int argc, char** argv) {
 				else if (keyEvent->key == SDLK_S) {
 					d.moveAlongZ = 1;
 				}
+				else if (keyEvent->key == SDLK_Q) {
+					d.rotateZ = -1;
+				}
+				else if (keyEvent->key == SDLK_E) {
+					d.rotateZ = 1;
+				}
 				else if (keyEvent->key == SDLK_SPACE) {
 					d.moveAlongY = 1;
 				}
@@ -481,6 +503,9 @@ int main(int argc, char** argv) {
 				}
 				else if (keyEvent->key == SDLK_W || keyEvent->key == SDLK_S) {
 					d.moveAlongZ = 0;
+				}
+				else if (keyEvent->key == SDLK_Q || keyEvent->key == SDLK_E) {
+					d.rotateZ = 0;
 				}
 				else if (keyEvent->key == SDLK_SPACE || keyEvent->key == SDLK_LSHIFT) {
 					d.moveAlongY = 0;
