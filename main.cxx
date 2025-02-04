@@ -225,7 +225,7 @@ struct DrawPlane {
 		refresh = true;
 	}
 
-	void traceLine(float x, float y) {
+	pair<Vec3F, Vec3F> traceLine(float x, float y) {
 		float xRatio = x / App.width * 2 - 1;
 		float yRatio = y / App.height * 2 - 1;
 
@@ -260,7 +260,7 @@ struct DrawPlane {
 		p.first.Print();
 		p.second.Print();
 
-		lines.push_back(p);
+		return p;
 	}
 
 	void applyMovesXYZ() {
@@ -398,16 +398,29 @@ struct DrawPlane {
 		refresh = true;
 	}
 
-	void updateProjection() {
+	void updateProjection(float width, float height) {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 
 		bool perspetive = true;
 		if (perspetive) {
-			GLdouble aspectRatio = (1.0*App.width) / App.height;
-			GLdouble tangent = tan(rad(fov / 2));
-			GLdouble right = nearPlane * tangent;
-			GLdouble top = right / aspectRatio;
+
+			GLdouble right;
+			GLdouble top;
+			GLdouble aspectRatio;
+			GLdouble tangent;
+
+			aspectRatio = (1.0 * width) / height;
+			tangent = tan(rad(fov / 2));
+
+			top = tangent * nearPlane;
+			right = top;
+			if (width > height) {
+				right *= aspectRatio;
+			}
+			else {
+				top /= aspectRatio;
+			}
 
 			glFrustum(-right, right, -top, top, nearPlane, farPlane);
 			frustumRight = right;
@@ -441,7 +454,7 @@ struct DrawPlane {
 
 		if (refresh) {
 			refresh = false;
-			updateProjection();
+			updateProjection(App.width, App.height);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
@@ -532,7 +545,7 @@ int main(int argc, char** argv) {
 			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
 				if (mouseEvent->button == SDL_BUTTON_LEFT && !App.mouseCaptureMode) {
-					d.traceLine(mouseEvent->x, mouseEvent->y);
+					d.lines.push_back(d.traceLine(mouseEvent->x, mouseEvent->y));
 				}
 				if (mouseEvent->button == SDL_BUTTON_RIGHT) {
 					App.mouseCapture(!App.mouseCaptureMode);
