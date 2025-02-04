@@ -251,9 +251,9 @@ struct DrawPlane {
 		Vec3F lineStart = { 0,0,0 };
 		Vec3F lineEnd = { pRight,pTop,-nearPlane };
 		lineEnd.normalize();
-		lineEnd.x *= 10;
-		lineEnd.y *= 10;
-		lineEnd.z *= 10;
+		lineEnd.x *= farPlane;
+		lineEnd.y *= farPlane;
+		lineEnd.z *= farPlane;
 
 		p.first = m.ApplyOnPoint(lineStart);
 		p.second = m.ApplyOnPoint(lineEnd);
