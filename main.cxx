@@ -229,22 +229,14 @@ struct DrawPlane {
 		float xRatio = x / App.width * 2 - 1;
 		float yRatio = y / App.height * 2 - 1;
 
-		float pRight = -xRatio * frustumRight; // minus xRatio because we rotate along Y axis
+		float pRight = xRatio * frustumRight; // minus xRatio because we rotate along Y axis
 		float pTop = -yRatio * frustumTop;
-
-		float oY = atan2(pRight, nearPlane);
-		float oX = atan2(pTop, nearPlane);
-		cout << "SCREEN ANGLE Y: " << deg(oY) << "\n";
-		cout << "SCREEN ANGLE X: " << deg(oX) << "\n";
 
 		M44 m; m.asRotateX(0);
 
 		M44 mX; mX.asRotateX(rad(aX));
 		M44 mY; mY.asRotateY(rad(aY));
 		M44 mZ; mZ.asRotateZ(rad(aZ));
-
-		M44 mOY; mOY.asRotateY(oY);
-		M44 mOX; mOX.asRotateX(oX);
 
 		M44 mT; mT.asTranslate(posX, posY, posZ);
 
@@ -254,17 +246,20 @@ struct DrawPlane {
 		m.Mult(mX);
 		m.Mult(mZ);
 
-		m.Mult(mOY);
-		m.Mult(mOX);
-
 		pair<Vec3F, Vec3F> p;
 
-		Vec3F lineStart = { 0,0,-nearPlane };
-		Vec3F lineEnd = { 0,0,-farPlane };
+		Vec3F lineStart = { 0,0,0 };
+		Vec3F lineEnd = { pRight,pTop,-nearPlane };
+		lineEnd.normalize();
+		lineEnd.x *= 10;
+		lineEnd.y *= 10;
+		lineEnd.z *= 10;
+
 		p.first = m.ApplyOnPoint(lineStart);
 		p.second = m.ApplyOnPoint(lineEnd);
 		p.first.Print();
 		p.second.Print();
+
 		lines.push_back(p);
 	}
 
