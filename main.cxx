@@ -198,6 +198,9 @@ struct DrawPlane {
 	const float nearPlane = 0.1;
 	const float farPlane = 10;
 
+	float frustumRight = 0;
+	float frustumTop = 0;
+
 	GLdouble fov = 60;
 	int frames = 0;
 
@@ -222,12 +225,26 @@ struct DrawPlane {
 		refresh = true;
 	}
 
-	void traceLine(int x, int y) {
+	void traceLine(float x, float y) {
+		float xRatio = x / App.width * 2 - 1;
+		float yRatio = y / App.height * 2 - 1;
+
+		float pRight = -xRatio * frustumRight; // minus xRatio because we rotate along Y axis
+		float pTop = -yRatio * frustumTop;
+
+		float oY = atan2(pRight, nearPlane);
+		float oX = atan2(pTop, nearPlane);
+		cout << "SCREEN ANGLE Y: " << deg(oY) << "\n";
+		cout << "SCREEN ANGLE X: " << deg(oX) << "\n";
+
 		M44 m; m.asRotateX(0);
 
 		M44 mX; mX.asRotateX(rad(aX));
 		M44 mY; mY.asRotateY(rad(aY));
 		M44 mZ; mZ.asRotateZ(rad(aZ));
+
+		M44 mOY; mOY.asRotateY(oY);
+		M44 mOX; mOX.asRotateX(oX);
 
 		M44 mT; mT.asTranslate(posX, posY, posZ);
 
@@ -236,6 +253,9 @@ struct DrawPlane {
 		m.Mult(mY);
 		m.Mult(mX);
 		m.Mult(mZ);
+
+		m.Mult(mOY);
+		m.Mult(mOX);
 
 		pair<Vec3F, Vec3F> p;
 
@@ -395,6 +415,8 @@ struct DrawPlane {
 			GLdouble top = right / aspectRatio;
 
 			glFrustum(-right, right, -top, top, nearPlane, farPlane);
+			frustumRight = right;
+			frustumTop = top;
 		}
 		else {
 			glOrtho(-1, 1, -1, 1, nearPlane, farPlane);
