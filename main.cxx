@@ -467,8 +467,9 @@ struct DrawPlane {
 	}
 
 	void frame() {
+		glLoadIdentity();
+		
 		++frames;
-
 		applyMoves();
 
 		if (refresh) {
