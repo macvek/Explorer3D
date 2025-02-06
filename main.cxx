@@ -239,7 +239,7 @@ struct DrawPlane {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGB, GL_UNSIGNED_BYTE, surface->pixels);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
 
 	}
 
@@ -474,25 +474,8 @@ struct DrawPlane {
 			refresh = false;
 			updateProjection(App.width, App.height);
 		}
-		glClearColor(0, 0, 0, 1);
+		glClearColor(1, 1, 1, 0);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glLoadIdentity();
-
-		glEnable(GL_TEXTURE_2D);
-		glTranslatef(0, 0, -3);
-		glBindTexture(GL_TEXTURE_2D, texName);
-		{
-			glBegin(GL_QUADS);
-
-			glTexCoord2f(0.0, 0.0);  glVertex3f(-1.0, -1.0, 0.0);
-			glTexCoord2f(0.0, 1.0);  glVertex3f(-1.0, 1.0, 0.0);
-			glTexCoord2f(1.0, 1.0);  glVertex3f(1.0, 1.0, 0.0);
-			glTexCoord2f(1.0, 0.0);  glVertex3f(1.0, -1.0, 0.0);
-
-			glEnd();
-		}
-
-		glDisable(GL_TEXTURE_2D);
 
 		eyeCoords();
 
@@ -515,6 +498,31 @@ struct DrawPlane {
 			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
 		}
 		glEnd();
+
+		glLoadIdentity();
+
+		// playing with texture 
+		{
+			glEnable(GL_BLEND);
+			glEnable(GL_TEXTURE_2D);
+			glTranslatef(0, 0, -3);
+			glBindTexture(GL_TEXTURE_2D, texName);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			{
+				glBegin(GL_QUADS);
+
+				glTexCoord2f(0.0, 1.0);  glVertex3f(-1.0, -1.0, 0.0);
+				glTexCoord2f(0.0, 0.0);  glVertex3f(-1.0, 1.0, 0.0);
+				glTexCoord2f(1.0, 0.0);  glVertex3f(1.0, 1.0, 0.0);
+				glTexCoord2f(1.0, 1.0);  glVertex3f(1.0, -1.0, 0.0);
+
+				glEnd();
+			}
+			if (glGetError()) { cout << "ERR 1\n"; }
+
+			glDisable(GL_BLEND);
+			glDisable(GL_TEXTURE_2D);
+		}
 
 		SDL_GL_SwapWindow(App.window);
 	}
@@ -558,7 +566,7 @@ struct DrawPlane {
 };
 
 void testSDL_Image() {
-	surface = IMG_Load("c:/share/sampleGimp.png");
+	surface = IMG_Load("c:/share/sampleGimpTransparent.png");
 }
 
 int main(int argc, char** argv) {
