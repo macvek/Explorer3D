@@ -239,6 +239,7 @@ struct DrawPlane {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
 
 	}
@@ -507,6 +508,7 @@ struct DrawPlane {
 			glEnable(GL_TEXTURE_2D);
 			glTranslatef(0, 0, -2);
 			glBindTexture(GL_TEXTURE_2D, texName);
+			glColor4f(1, 1, 1, 1);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			{
 				glBegin(GL_QUADS);
