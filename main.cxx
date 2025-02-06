@@ -239,7 +239,7 @@ struct DrawPlane {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
 
 	}
 
@@ -474,7 +474,7 @@ struct DrawPlane {
 			refresh = false;
 			updateProjection(App.width, App.height);
 		}
-		glClearColor(1, 1, 1, 0);
+		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		eyeCoords();
@@ -505,7 +505,7 @@ struct DrawPlane {
 		{
 			glEnable(GL_BLEND);
 			glEnable(GL_TEXTURE_2D);
-			glTranslatef(0, 0, -3);
+			glTranslatef(0, 0, -2);
 			glBindTexture(GL_TEXTURE_2D, texName);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			{
@@ -566,7 +566,7 @@ struct DrawPlane {
 };
 
 void testSDL_Image() {
-	surface = IMG_Load("c:/share/sampleGimpTransparent.png");
+	surface = IMG_Load("c:/share/charmap.png");
 }
 
 int main(int argc, char** argv) {
