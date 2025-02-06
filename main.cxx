@@ -558,7 +558,7 @@ struct DrawPlane {
 };
 
 void testSDL_Image() {
-	surface = IMG_Load("c:/share/sample.bmp");
+	surface = IMG_Load("c:/share/sampleGimp.png");
 }
 
 int main(int argc, char** argv) {
@@ -576,7 +576,7 @@ int main(int argc, char** argv) {
 	d.init();
 	
 	cout << "W: " << surface->w << " " << surface->h << "\n";
-	cout << surface->format << "\n";
+	printf("0x%x\n", surface->format);
 	App.mouseCapture(true);
 
 	const int FPS = 60;
