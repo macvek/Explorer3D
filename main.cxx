@@ -14,9 +14,6 @@
 
 using namespace std;
 
-SDL_Surface* surface = NULL;
-GLuint texName;
-
 struct Vec3F {
 	float x,y,z;
 
@@ -286,35 +283,80 @@ struct DrawPlane {
 			}
 		}
 	}
+	
+	GLuint texName;
 
-	void init() {
-		glViewport(0, 0, App.width, App.height);
-		refresh = true;
+	void createMipmap(int side, unsigned char* source) {
+		int a = side / 2;
+		if (a == 0) {
+			return;
+		}
 
-		// sdl_image texture playtest
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		if (a > 512 || a < 0) {
+			cerr << "[ERROR] createMipmap with value not from [0,512], got : " << a << endl;
+			return;
+		}
+
+		int bufferSize = a * a * 4;
+
+		unique_ptr<unsigned char[]> b1 = make_unique<unsigned char[]>(bufferSize);
+		unique_ptr<unsigned char[]> b2 = make_unique<unsigned char[]>(bufferSize);
+
+		unsigned char* buffer = b1.get();
+		unsigned char* fromBuffer = source;
 		
+		int face = 1;
+
+		while (a) {
+			scaleDownRGB(a, fromBuffer, buffer);
+			glTexImage2D(GL_TEXTURE_2D, face, GL_RGBA, a, a, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+
+			if (face % 2 == 1) {
+				fromBuffer = b1.get();
+				buffer = b2.get();
+			}
+			else {
+				fromBuffer = b2.get();
+				buffer = b1.get();
+			}
+
+			a /= 2;
+			face += 1;
+		}
+	}
+
+	void loadFontTexture() {
+		SDL_Surface* surface = IMG_Load("c:/share/Charmap128.png");
+		if (!surface) {
+			cerr << "[ERROR] failed to load font texture; file not found\n";
+			return;
+		}
+
+		cout << "W: " << surface->w << " " << surface->h << "\n";
+		printf("0x%x\n", surface->format);
+
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
 		glGenTextures(1, &texName);
 		glBindTexture(GL_TEXTURE_2D, texName);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
 
-		const int bufferSize = 256 * 256 * 4;
-		auto bufferA = make_unique<unsigned char[]>(bufferSize);
-		auto bufferB = make_unique<unsigned char[]>(bufferSize);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);	scaleDownRGB(256, (unsigned char*)surface->pixels, bufferA.get());
-		glTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get());		scaleDownRGB(128, bufferA.get(), bufferB.get());
-		glTexImage2D(GL_TEXTURE_2D, 2, GL_RGBA, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferB.get());	scaleDownRGB(64, bufferB.get(), bufferA.get());
-		glTexImage2D(GL_TEXTURE_2D, 3, GL_RGBA,  64,  64, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get()); scaleDownRGB(32, bufferA.get(), bufferB.get());
-		glTexImage2D(GL_TEXTURE_2D, 4, GL_RGBA,  32,  32, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferB.get()); scaleDownRGB(16, bufferB.get(), bufferA.get());
-		glTexImage2D(GL_TEXTURE_2D, 5, GL_RGBA,  16,  16, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get()); scaleDownRGB(8, bufferA.get(), bufferB.get());
-		glTexImage2D(GL_TEXTURE_2D, 6, GL_RGBA,  8, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferB.get()); scaleDownRGB(4, bufferB.get(), bufferA.get());
-		glTexImage2D(GL_TEXTURE_2D, 7, GL_RGBA,  4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get()); scaleDownRGB(2, bufferA.get(), bufferB.get());
-		glTexImage2D(GL_TEXTURE_2D, 8, GL_RGBA,  2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferB.get()); scaleDownRGB(1, bufferB.get(), bufferA.get());
-		glTexImage2D(GL_TEXTURE_2D, 9, GL_RGBA,  1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get());
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+		createMipmap(128, (unsigned char*)surface->pixels);
+		SDL_DestroySurface(surface);
+	}
+
+	void init() {
+		loadFontTexture();
+		
+		glViewport(0, 0, App.width, App.height);
+		refresh = true;
+
+		
 		
 		//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 
@@ -653,10 +695,6 @@ struct DrawPlane {
 
 };
 
-void testSDL_Image() {
-	surface = IMG_Load("c:/share/charmap.png");
-}
-
 int main(int argc, char** argv) {
 	if (!App.startSDL()) {
 		cout << "Failed to start, error: " << App.lastError << endl;
@@ -664,15 +702,11 @@ int main(int argc, char** argv) {
 	}
 
 	App.openglProperties.toStream(cout);
-	
-	testSDL_Image();
 
 	bool showEvent = false;
 	DrawPlane d;
 	d.init();
 	
-	cout << "W: " << surface->w << " " << surface->h << "\n";
-	printf("0x%x\n", surface->format);
 	App.mouseCapture(true);
 
 	const int FPS = 60;
