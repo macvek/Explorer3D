@@ -222,7 +222,33 @@ struct DrawPlane {
 	int rotateZ = 0;
 	
 	bool refresh = false;
+
+	const string FontMap = ""
+		"abcdefghijklm\n"
+		"nopqrstuvwxyz\n"
+		"ABCDEFGHIJKLM\n"
+		"NOPQRSTUVWXYZ\n"
+		"0123456789!@#\n"
+		"$%^&*()-=_+[]\n"
+		"{};':\",.<>|/\\?\n";
 	
+	void charCoord(const char c, int &x, int &y) {
+		// it just stops and state of x/y is taken as output
+		x = 0;
+		y = 0;
+		for (auto ptr = FontMap.cbegin(); ptr < FontMap.cend(); ++ptr) {
+			if (*ptr == c) {
+				break;
+			}
+			if (*ptr == '\n') {
+				y += 1;
+				x = 0;
+			}
+			
+			x += 1;
+		}
+	}
+
 	void makeRectRGB(int toSide, unsigned char* from, unsigned char* to) {
 		int fromLineLen = toSide * 2 * 4;
 		int toLineLen = toSide * 4;
