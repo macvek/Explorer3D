@@ -225,6 +225,68 @@ struct DrawPlane {
 	int rotateZ = 0;
 	
 	bool refresh = false;
+	
+	void makeRectRGB(int toSide, unsigned char* from, unsigned char* to) {
+		int fromLineLen = toSide * 2 * 4;
+		int toLineLen = toSide * 4;
+
+		for (int y = 0; y < toSide; ++y) {
+			for (int x = 0; x < toSide; ++x) {
+				int toPtr = y * toLineLen + x * 4;
+
+				if (x == 0 || y == 0 || x == toSide - 1 || y == toSide - 1) {
+					to[toPtr + 0] = 255;
+					to[toPtr + 1] = 0;
+					to[toPtr + 2] = 0;
+					to[toPtr + 3] = 255;
+				}
+				
+				else {
+					to[toPtr + 0] = 0;
+					to[toPtr + 1] = 255;
+					to[toPtr + 2] = 255;
+					to[toPtr + 3] = 100;
+				}
+
+			}
+		}
+	}
+
+	void scaleDownRGB(int toSide, unsigned char* from, unsigned char* to) {
+		int fromLineLen = toSide * 2 * 4;
+		int toLineLen = toSide * 4;
+
+		for (int y = 0; y < toSide; ++y) {
+			for (int x = 0; x < toSide; ++x) {
+				int toPtr = y*toLineLen+ x*4;
+				
+				int r = 0;
+				int g = 0;
+				int b = 0;
+				int a = 0;
+
+				for (int py = 0; py < 2; ++py) for (int px = 0; px < 2; ++px) {
+					int idx = (y*2 + py) * fromLineLen + (x*2 + px) * 4;
+					
+					r += from[idx + 0];
+					g += from[idx + 1];
+					b += from[idx + 2];
+					a += from[idx + 3];
+				}
+
+				r /= 4;
+				g /= 4;
+				b /= 4;
+				a /= 4;
+
+				to[toPtr + 0] = r;
+				to[toPtr + 1] = g;
+				to[toPtr + 2] = b;
+				to[toPtr + 3] = a;
+			}
+		}
+	}
+
 	void init() {
 		glViewport(0, 0, App.width, App.height);
 		refresh = true;
@@ -237,10 +299,24 @@ struct DrawPlane {
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+
+		const int bufferSize = 256 * 256 * 4;
+		auto bufferA = make_unique<unsigned char[]>(bufferSize);
+		auto bufferB = make_unique<unsigned char[]>(bufferSize);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);	scaleDownRGB(256, (unsigned char*)surface->pixels, bufferA.get());
+		glTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get());		scaleDownRGB(128, bufferA.get(), bufferB.get());
+		glTexImage2D(GL_TEXTURE_2D, 2, GL_RGBA, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferB.get());	scaleDownRGB(64, bufferB.get(), bufferA.get());
+		glTexImage2D(GL_TEXTURE_2D, 3, GL_RGBA,  64,  64, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get()); scaleDownRGB(32, bufferA.get(), bufferB.get());
+		glTexImage2D(GL_TEXTURE_2D, 4, GL_RGBA,  32,  32, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferB.get()); scaleDownRGB(16, bufferB.get(), bufferA.get());
+		glTexImage2D(GL_TEXTURE_2D, 5, GL_RGBA,  16,  16, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get()); scaleDownRGB(8, bufferA.get(), bufferB.get());
+		glTexImage2D(GL_TEXTURE_2D, 6, GL_RGBA,  8, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferB.get()); scaleDownRGB(4, bufferB.get(), bufferA.get());
+		glTexImage2D(GL_TEXTURE_2D, 7, GL_RGBA,  4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get()); scaleDownRGB(2, bufferA.get(), bufferB.get());
+		glTexImage2D(GL_TEXTURE_2D, 8, GL_RGBA,  2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferB.get()); scaleDownRGB(1, bufferB.get(), bufferA.get());
+		glTexImage2D(GL_TEXTURE_2D, 9, GL_RGBA,  1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, bufferA.get());
 		
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+		//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 
 	}
 
@@ -466,45 +542,10 @@ struct DrawPlane {
 		glRotatef(-aY, 0, 1, 0);
 	}
 
-	void frame() {
-		glLoadIdentity();
-		
-		++frames;
-		applyMoves();
-
-		if (refresh) {
-			refresh = false;
-			updateProjection(App.width, App.height);
-		}
-		glClearColor(0, 0, 0, 1);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		eyeCoords();
-
-		glTranslatef(-posX, -posY, -posZ);
-
-		glColor3f(0.3, 0.3, 0.3);
-		drawGrid(0);
-
-		glColor3f(0.3, 0.3, 0.5);
-		drawGrid(3);
-
-		glPushMatrix();
-			glTranslatef(0, 0, -3);
-			drawQuad();
-		glPopMatrix();
-
-		glBegin(GL_LINES);
-		for (auto p = lines.cbegin(); p < lines.cend(); ++p) {
-			glColor3f(0, 1, 1); glVertex3f(p->first.x, p->first.y, p->first.z);
-			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
-		}
-		glEnd();
-
-		glLoadIdentity();
-
+	void texturedPlane() {
 		// playing with texture 
 		{
+			glPushMatrix();
 			glEnable(GL_BLEND);
 			glEnable(GL_TEXTURE_2D);
 			glTranslatef(0, 0, -2);
@@ -525,7 +566,51 @@ struct DrawPlane {
 
 			glDisable(GL_BLEND);
 			glDisable(GL_TEXTURE_2D);
+			glPopMatrix();
 		}
+	}
+
+	void frame() {
+		glLoadIdentity();
+		
+		++frames;
+		applyMoves();
+
+		if (refresh) {
+			refresh = false;
+			updateProjection(App.width, App.height);
+		}
+		glClearColor(0, 0, 0, 1);
+		glShadeModel(GL_SMOOTH);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		eyeCoords();
+
+		glTranslatef(-posX, -posY, -posZ);
+
+		glColor3f(0.3, 0.3, 0.3);
+		drawGrid(0);
+
+		glColor3f(0.3, 0.3, 0.5);
+		drawGrid(3);
+
+		glPushMatrix();
+			glTranslatef(0, 0, -3);
+			drawQuad();
+		glPopMatrix();
+
+		texturedPlane();
+
+		glBegin(GL_LINES);
+		for (auto p = lines.cbegin(); p < lines.cend(); ++p) {
+			glColor3f(0, 1, 1); glVertex3f(p->first.x, p->first.y, p->first.z);
+			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
+		}
+		glEnd();
+
+		
+
+		
 
 		SDL_GL_SwapWindow(App.window);
 	}
