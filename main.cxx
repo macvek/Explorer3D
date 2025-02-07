@@ -638,6 +638,42 @@ struct DrawPlane {
 		}
 	}
 
+	void sampleOrthoDrawFont() {
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+		glOrtho(0, 256, 256, 0, -1, 1);
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glPushMatrix();
+		glEnable(GL_BLEND);
+		glEnable(GL_TEXTURE_2D);
+
+		glBindTexture(GL_TEXTURE_2D, texName);
+		glColor4f(1, 1, 1, 1);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		{
+			glBegin(GL_QUADS);
+
+			glTexCoord2f(0.0, 0.0);  glVertex2i(0, 0);
+			glTexCoord2f(0.0, 1.0);  glVertex2i(0, 256);
+			glTexCoord2f(1.0, 1.0);  glVertex2i(256, 256);
+			glTexCoord2f(1.0, 0.0);  glVertex2i(256, 0);
+
+			glEnd();
+		}
+		if (glGetError()) { cout << "ERR 1\n"; }
+
+		glDisable(GL_BLEND);
+		glDisable(GL_TEXTURE_2D);
+		glPopMatrix();
+
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		glMatrixMode(GL_MODELVIEW);
+	}
+
 	void frame() {
 		glLoadIdentity();
 		
@@ -676,9 +712,7 @@ struct DrawPlane {
 		}
 		glEnd();
 
-		
-
-		
+		sampleOrthoDrawFont();
 
 		SDL_GL_SwapWindow(App.window);
 	}
