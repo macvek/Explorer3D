@@ -638,15 +638,25 @@ struct DrawPlane {
 		}
 	}
 
-	void sampleOrthoDrawFont() {
+	void enterPixelToPixel2D() {
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
 		glLoadIdentity();
-		glOrtho(0, 256, 256, 0, -1, 1);
+		glOrtho(0, App.width, App.height, 0, -1, 1);
 
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		glPushMatrix();
+	}
+
+	void leavePixelToPixel2D() {
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		glMatrixMode(GL_MODELVIEW);
+	}
+
+
+	void sampleOrthoDrawFont() {
+		glPushAttrib(GL_ENABLE_BIT);
 		glEnable(GL_BLEND);
 		glEnable(GL_TEXTURE_2D);
 
@@ -657,21 +667,15 @@ struct DrawPlane {
 			glBegin(GL_QUADS);
 
 			glTexCoord2f(0.0, 0.0);  glVertex2i(0, 0);
-			glTexCoord2f(0.0, 1.0);  glVertex2i(0, 256);
-			glTexCoord2f(1.0, 1.0);  glVertex2i(256, 256);
-			glTexCoord2f(1.0, 0.0);  glVertex2i(256, 0);
+			glTexCoord2f(0.0, 1.0);  glVertex2i(0, 127);
+			glTexCoord2f(1.0, 1.0);  glVertex2i(127, 127);
+			glTexCoord2f(1.0, 0.0);  glVertex2i(127, 0);
 
 			glEnd();
 		}
 		if (glGetError()) { cout << "ERR 1\n"; }
 
-		glDisable(GL_BLEND);
-		glDisable(GL_TEXTURE_2D);
-		glPopMatrix();
-
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
+		glPopAttrib();
 	}
 
 	void frame() {
@@ -712,7 +716,9 @@ struct DrawPlane {
 		}
 		glEnd();
 
+		enterPixelToPixel2D();
 		sampleOrthoDrawFont();
+		leavePixelToPixel2D();
 
 		SDL_GL_SwapWindow(App.window);
 	}
