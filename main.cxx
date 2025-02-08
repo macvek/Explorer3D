@@ -225,6 +225,28 @@ struct TextPainterContext {
 		--x;
 	}
 
+	void textSize(const string &text, int& width, int& height) {
+		textSizeChars(text, width, height);
+		width *= fontCharWidth;
+		height *= fontCharHeight;
+	}
+
+	void textSizeChars(const string &text, int& width, int& height) {
+		int lineMax = 0;
+		int x = 0;
+		int y = 1;
+		for (auto ptr = text.cbegin(); ptr < text.cend(); ++ptr) {
+			++x;
+			if (*ptr == '\n') {
+				y++;
+				lineMax = max<int>(x, lineMax);
+			}
+		}
+
+		width = max<int>(x, lineMax);
+		height = y;
+	}
+
 	void drawString(const string text) {
 		float oX = 0;
 		float oY = 0;
@@ -278,10 +300,19 @@ struct TextPainterContext {
 	void bindTexture() {
 		glBindTexture(GL_TEXTURE_2D, TextPainter.fontTextName);
 	}
+
+	
 } TextPainter;
 
+struct UIXY {
+	float x = 0;
+	float y = 0;
+};
+
 struct UIRGB {
-	unsigned char r, g, b;
+	unsigned char r = 0;
+	unsigned char g = 0;
+	unsigned char b = 0;
 };
 
 struct UIFillRGB {
@@ -290,12 +321,9 @@ struct UIFillRGB {
 };
 
 struct UIRect {
-	float x = 0;
-	float y = 0;
-	float textX = 0;
-	float textY = 0;
-	float width = 0;
-	float height = 0;
+	UIXY pos;
+	UIXY textPos;
+	UIXY size;
 
 	string text;
 	int id = -1;
@@ -309,11 +337,11 @@ struct UIRect {
 		glBegin(GL_LINE_LOOP);
 
 		glColor3ub(c->bottom.r, c->bottom.g, c->bottom.b);
-		glVertex3f(0, height, 0.0);
-		glVertex3f(width, height, 0.0);
+		glVertex3f(0, size.y, 0.0);
+		glVertex3f(size.x, size.y, 0.0);
 
 		glColor3ub(c->top.r, c->top.g, c->top.b);
-		glVertex3f(width, 0, 0.0);
+		glVertex3f(size.x, 0, 0.0);
 		glVertex3f(0, 0, 0.0);
 
 		glEnd();
@@ -326,27 +354,41 @@ struct UIRect {
 		glBegin(GL_QUADS);
 
 		glColor3ub(c->bottom.r, c->bottom.g, c->bottom.b);
-		glVertex3f(0, height, 0.0);
-		glVertex3f(width, height, 0.0);
+		glVertex3f(0, size.y, 0.0);
+		glVertex3f(size.x, size.y, 0.0);
 		
 		glColor3ub(c->top.r, c->top.g, c->top.b);
-		glVertex3f(width, 0, 0.0);
+		glVertex3f(size.x, 0, 0.0);
 		glVertex3f(0, 0, 0.0);
 
 		glEnd();
 	}
 
 	void render() const {
-		glTranslatef(x, y, 0);
+		glTranslatef(pos.x, pos.y, 0);
 
 		glDisable(GL_TEXTURE_2D);
 		drawBackground();
 		drawBorder();
 		glEnable(GL_TEXTURE_2D);
 
-		glTranslatef(textX, textY, 0);
+		glTranslatef(textPos.x, textPos.y, 0);
 		TextPainter.drawString(text);
 	}
+
+	float calculateCenter(float space, float box) {
+		return (space - box) / 2;
+	}
+
+	void centerText() {
+		int textWidth;
+		int textHeight;
+		TextPainter.textSize(text, textWidth, textHeight);
+
+		textPos.x = calculateCenter(size.x, textWidth);
+		textPos.y = calculateCenter(size.y, textHeight);
+	}
+
 };
 
 struct UIGroup {
@@ -552,12 +594,12 @@ struct DrawPlane {
 		button.border.top = { 255,255,255 };
 		button.border.bottom = { 64, 64, 64 };
 
-		button.x = 4;
-		button.y = 4;
+		button.pos = { 4,4 };
 
 		button.text = "Sample button";
-		button.width = 150;
-		button.height = 30;
+		button.size = { 150, 30 };
+
+		button.centerText();
 
 		mainUI.parts.push_back(button);
 	}
