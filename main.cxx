@@ -673,7 +673,8 @@ struct DrawPlane {
 	}
 
 	void drawString(const string text) {
-		float offset = 0;
+		float oX = 0;
+		float oY = 0;
 
 		int cX = 0;
 		int cY = 0;
@@ -686,23 +687,31 @@ struct DrawPlane {
 		float tH = fontCharHeight * tUnit;
 
 		for (auto c = text.cbegin(); c < text.cend(); ++c) {
-			if (*c == '\n') continue;
-			if (*c != ' ') {
+			if (*c == '\n') {
+				oX = 0;
+				oY += fontCharHeight;
+			}
+			else if (*c == ' ') {
+				oX += fontCharWidth;
+			}
+			else {
 				charCoord(*c, cX, cY);
 				tX = cX * fontCharWidth * tUnit;
 				tY = cY * fontCharHeight * tUnit;
 
 				glBegin(GL_QUADS);
 
-				glTexCoord2f(tX, tY);			glVertex2f(offset, 0);
-				glTexCoord2f(tX, tY + tH);		glVertex2f(offset, 0 + fontCharHeight);
-				glTexCoord2f(tX + tW, tY + tH); glVertex2f(offset + fontCharWidth, 0 + fontCharHeight);
-				glTexCoord2f(tX + tW, tY);		glVertex2f(offset + fontCharWidth, 0);
+				glTexCoord2f(tX, tY);			glVertex2f(oX, oY);
+				glTexCoord2f(tX, tY + tH);		glVertex2f(oX, oY + fontCharHeight);
+				glTexCoord2f(tX + tW, tY + tH); glVertex2f(oX + fontCharWidth, oY + fontCharHeight);
+				glTexCoord2f(tX + tW, tY);		glVertex2f(oX + fontCharWidth, oY);
 
 				glEnd();
+				
+				oX += fontCharWidth;
 			}
 
-			offset += fontCharWidth;
+			
 		}
 	}
 
@@ -727,9 +736,9 @@ struct DrawPlane {
 			glBegin(GL_QUADS);
 
 			glTexCoord2f(0.0, 0.0);  glVertex2i(0, 0);
-			glTexCoord2f(0.0, 1.0);  glVertex2i(0, 127);
-			glTexCoord2f(1.0, 1.0);  glVertex2i(127, 127);
-			glTexCoord2f(1.0, 0.0);  glVertex2i(127, 0);
+			glTexCoord2f(0.0, 1.0);  glVertex2i(0, 128);
+			glTexCoord2f(1.0, 1.0);  glVertex2i(128, 128);
+			glTexCoord2f(1.0, 0.0);  glVertex2i(128, 0);
 
 			glEnd();
 		}
@@ -777,7 +786,7 @@ struct DrawPlane {
 		glEnd();
 
 		enterPixelToPixel2D();
-		//sampleOrthoDrawFont();
+		sampleOrthoDrawFont();
 		glColor4f(1, 0, 1, 1);
 		drawStringAt(FontMap,0,0);
 		leavePixelToPixel2D();
