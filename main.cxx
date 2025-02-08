@@ -328,6 +328,18 @@ struct TextPainterContext {
 
 } TextPainter;
 
+enum UIRectState {
+	UICursorIdle,
+	UICursorHover,
+	UICursorActive,
+};
+
+struct UIRGBConfig {
+	UIFillRGB textColor;
+	UIFillRGB background;
+	UIFillRGB border;
+};
+
 struct UIRect {
 	UIXY pos;
 	UIXY textPos;
@@ -336,12 +348,16 @@ struct UIRect {
 	string text;
 	int id = -1;
 
-	UIFillRGB textColor;
-	UIFillRGB background;
-	UIFillRGB border;
+	UIRGBConfig* configHover;
+	UIRGBConfig* configActive;
+	UIRGBConfig* configIdle;
+
+	UIRGBConfig* currentState;
+
+	UIRectState state = UICursorIdle;
 
 	void drawBorder() const {
-		const UIFillRGB* c = &border;
+		const UIFillRGB* c = &currentState->border;
 
 		glBegin(GL_LINE_LOOP);
 
@@ -358,7 +374,7 @@ struct UIRect {
 
 	void drawBackground() const {
 
-		const UIFillRGB* c = &background;
+		const UIFillRGB* c = &currentState->background;
 
 		glBegin(GL_QUADS);
 
@@ -373,6 +389,15 @@ struct UIRect {
 		glEnd();
 	}
 
+	void updateState(UIRectState newState) {
+		state = newState;
+		switch (state) {
+		case UICursorIdle: currentState = configIdle; return;
+		case UICursorActive: currentState = configActive; return;
+		case UICursorHover: currentState = configHover; return;
+		}
+	}
+
 	void render() const {
 		glTranslatef(pos.x, pos.y, 0);
 
@@ -382,7 +407,7 @@ struct UIRect {
 		glEnable(GL_TEXTURE_2D);
 
 		glTranslatef(textPos.x, textPos.y, 0);
-		TextPainter.drawStringColor(text, textColor);
+		TextPainter.drawStringColor(text, currentState->textColor);
 	}
 
 	float calculateCenter(float space, float box) {
@@ -450,6 +475,10 @@ struct DrawPlane {
 	bool refresh = false;
 
 	UIGroup mainUI;
+	
+	UIRGBConfig colorsIdle;
+	UIRGBConfig colorsHover;
+	UIRGBConfig colorsActive;
 
 
 	void makeRectRGB(int toSide, unsigned char* from, unsigned char* to) {
@@ -595,31 +624,62 @@ struct DrawPlane {
 		mainUI.x = 100;
 		mainUI.y = 100;
 
+		UIFillRGB standardTextColor = { { 150, 150, 250 }, { 200, 200, 250 } };
+		UIFillRGB darkerTextColor = { { 120, 120, 220 }, { 180, 180, 230 } };
+
 		UIFillRGB standardFill = { {10,10,200}, {30,30,250} };
 		UIFillRGB standardBorder = { {50,50,250}, {20,20,200} };
 
+		UIFillRGB brighterFill = { {30,30,220}, {50,50,255} };
+		UIFillRGB brighterBorder = { {80,80,255}, {50,50,250} };
+		
+		UIFillRGB darkerFill = { {10,10,200}, {0,0,120} };
+		UIFillRGB darkerBorder = { {30,30,230}, {10,10,150} };
+		
+
 		UIRect button;
+		
+		colorsIdle.background = standardFill;
+		colorsIdle.border = standardBorder;
+		colorsIdle.textColor = standardTextColor;
 
-		button.background = standardFill;
+		colorsActive.background = brighterFill;
+		colorsActive.border = darkerBorder;
+		colorsActive.textColor = standardTextColor;
 
-		button.border = standardBorder;
+		colorsHover.background = darkerFill;
+		colorsHover.border = brighterBorder;
+		colorsHover.textColor = darkerTextColor;
 
 		button.pos = { 4,4 };
 
-		button.text = "Sample button";
+		button.text = "IDLE";
 		button.size = { 150, 30 };
-		button.textColor = { { 150, 150, 250 }, { 200, 200, 250 } };
-
 		button.centerText();
+		
+		button.configIdle = &colorsIdle;
+		button.configActive = &colorsActive;
+		button.configHover = &colorsHover;
+		button.updateState(UICursorIdle);
 
-		UIRect otherButton;
-		otherButton = button;
-		otherButton.text = "Create Cube";
-		otherButton.centerText();
-		otherButton.pos.y += otherButton.size.y + 10;
+		UIRect hoverButton = button;
+		hoverButton.text = "H O V E R";
+		hoverButton.centerText();
+		hoverButton.pos.y += hoverButton.size.y + 10;
+		hoverButton.updateState(UICursorHover);
 
+		UIRect activeButton = hoverButton;
+		activeButton.text = ">> ACTIVE <<";
+		activeButton.centerText();
+		activeButton.pos.y += activeButton.size.y + 10;
+		activeButton.updateState(UICursorActive);
+
+		
+		
 		mainUI.parts.push_back(button);
-		mainUI.parts.push_back(otherButton);
+		mainUI.parts.push_back(hoverButton);
+		mainUI.parts.push_back(activeButton);
+
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
