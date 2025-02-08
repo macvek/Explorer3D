@@ -231,6 +231,11 @@ struct DrawPlane {
 		"0123456789!@#\n"
 		"$%^&*()-=_+[]\n"
 		"{};':\",.<>|/\\?\n";
+
+	GLuint fontTextName = 0;
+	int fontCharHeight = 0;
+	int fontCharWidth = 0;
+
 	
 	void charCoord(const char c, int &x, int &y) {
 		// it just stops and state of x/y is taken as output
@@ -244,8 +249,9 @@ struct DrawPlane {
 				y += 1;
 				x = 0;
 			}
-			
-			x += 1;
+			else {
+				x += 1;
+			}
 		}
 	}
 
@@ -310,8 +316,6 @@ struct DrawPlane {
 		}
 	}
 	
-	GLuint texName;
-
 	void createMipmap(int side, unsigned char* source) {
 		int a = side / 2;
 		if (a == 0) {
@@ -363,8 +367,8 @@ struct DrawPlane {
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-		glGenTextures(1, &texName);
-		glBindTexture(GL_TEXTURE_2D, texName);
+		glGenTextures(1, &fontTextName);
+		glBindTexture(GL_TEXTURE_2D, fontTextName);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -374,6 +378,9 @@ struct DrawPlane {
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
 		createMipmap(128, (unsigned char*)surface->pixels);
 		SDL_DestroySurface(surface);
+
+		fontCharHeight = 18;
+		fontCharWidth = 9;
 	}
 
 	void init() {
@@ -617,7 +624,7 @@ struct DrawPlane {
 			glEnable(GL_BLEND);
 			glEnable(GL_TEXTURE_2D);
 			glTranslatef(0, 0, -2);
-			glBindTexture(GL_TEXTURE_2D, texName);
+			glBindTexture(GL_TEXTURE_2D, fontTextName);
 			glColor4f(1, 1, 1, 1);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			{
@@ -638,6 +645,7 @@ struct DrawPlane {
 		}
 	}
 
+	// x=0;y=0 => top left corner
 	void enterPixelToPixel2D() {
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
@@ -645,22 +653,70 @@ struct DrawPlane {
 		glOrtho(0, App.width, App.height, 0, -1, 1);
 
 		glMatrixMode(GL_MODELVIEW);
+
+		glPushAttrib(GL_ENABLE_BIT);
+		glEnable(GL_BLEND);
+		glEnable(GL_TEXTURE_2D);
+
 		glLoadIdentity();
 	}
 
 	void leavePixelToPixel2D() {
+		glPopAttrib();
+
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
 		glMatrixMode(GL_MODELVIEW);
 	}
 
+	void drawString(const string text) {
+		float offset = 0;
+
+		int cX = 0;
+		int cY = 0;
+
+		float tX = 0;
+		float tY = 0;
+
+		float tUnit = 1.0 / 128.0;
+		float tW = fontCharWidth * tUnit;
+		float tH = fontCharHeight * tUnit;
+
+		for (auto c = text.cbegin(); c < text.cend(); ++c) {
+			if (*c != ' ') {
+				charCoord(*c, cX, cY);
+				tX = cX * fontCharWidth * tUnit;
+				tY = cY * fontCharHeight * tUnit;
+
+				glBegin(GL_QUADS);
+
+				glTexCoord2f(tX, tY);			glVertex2f(offset, 0);
+				glTexCoord2f(tX, tY + tH);		glVertex2f(offset, 0 + fontCharHeight);
+				glTexCoord2f(tX + tW, tY + tH); glVertex2f(offset + fontCharWidth, 0 + fontCharHeight);
+				glTexCoord2f(tX + tW, tY);		glVertex2f(offset + fontCharWidth, 0);
+
+				glEnd();
+			}
+
+			offset += fontCharWidth;
+		}
+	}
+
+	void drawStringAt(string text, float x, float y) {
+		glPushMatrix();
+		glTranslatef(x, y, 0);
+
+		drawString(text);
+
+		glPopMatrix();
+	}
 
 	void sampleOrthoDrawFont() {
 		glPushAttrib(GL_ENABLE_BIT);
 		glEnable(GL_BLEND);
 		glEnable(GL_TEXTURE_2D);
 
-		glBindTexture(GL_TEXTURE_2D, texName);
+		glBindTexture(GL_TEXTURE_2D, fontTextName);
 		glColor4f(1, 1, 1, 1);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		{
@@ -717,7 +773,14 @@ struct DrawPlane {
 		glEnd();
 
 		enterPixelToPixel2D();
-		sampleOrthoDrawFont();
+		//sampleOrthoDrawFont();
+		glColor4f(1, 0, 1, 1);
+		drawStringAt("abcdefghijklm"
+		"nopqrstuvwxyz"
+		"ABCDEFGHIJKLM"
+		"NOPQRSTUVWXYZ"
+		"0123456789!@#"
+		"$%^&*()-=_+[]",0,0);
 		leavePixelToPixel2D();
 
 		SDL_GL_SwapWindow(App.window);
