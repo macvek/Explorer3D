@@ -14,8 +14,24 @@
 
 using namespace std;
 
+struct UIXY {
+	float x = 0;
+	float y = 0;
+};
+
+struct UIRGB {
+	unsigned char r = 0;
+	unsigned char g = 0;
+	unsigned char b = 0;
+};
+
+struct UIFillRGB {
+	UIRGB top;
+	UIRGB bottom;
+};
+
 struct Vec3F {
-	float x,y,z;
+	float x, y, z;
 
 	void Print() {
 		cout << " [ " << x << "\t" << y << "\t" << z << " ] " << endl;
@@ -135,7 +151,7 @@ struct AppContext {
 	void stopSDL();
 	void mouseCapture(bool newState) {
 		SDL_SetWindowRelativeMouseMode(App.window, newState);
-		
+
 		if (mouseCaptureMode && false == newState) {
 			SDL_WarpMouseInWindow(window, width / 2, height / 2);
 		}
@@ -150,7 +166,7 @@ bool AppContext::startSDL() {
 		lastError = "Failed to load GL library";
 		return false;
 	}
-	
+
 	int requestedValue = 8;
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, requestedValue);
 
@@ -164,7 +180,7 @@ bool AppContext::startSDL() {
 		lastError = "Failed to get expected stencil size; aborting";
 		return false;
 	}
-	
+
 	openglProperties.nameVendor = string((char*)(glGetString(GL_VENDOR)));
 	openglProperties.nameRenderer = string((char*)(glGetString(GL_RENDERER)));
 	openglProperties.nameVersion = string((char*)(glGetString(GL_VERSION)));
@@ -225,13 +241,13 @@ struct TextPainterContext {
 		--x;
 	}
 
-	void textSize(const string &text, int& width, int& height) {
+	void textSize(const string& text, int& width, int& height) {
 		textSizeChars(text, width, height);
 		width *= fontCharWidth;
 		height *= fontCharHeight;
 	}
 
-	void textSizeChars(const string &text, int& width, int& height) {
+	void textSizeChars(const string& text, int& width, int& height) {
 		int lineMax = 0;
 		int x = 0;
 		int y = 1;
@@ -247,7 +263,12 @@ struct TextPainterContext {
 		height = y;
 	}
 
-	void drawString(const string text) {
+	void drawString(const string& text) {
+		UIFillRGB color = { { 255,255,255 }, {180,180,180} };
+		drawStringColor(text, color);
+	}
+
+	void drawStringColor(const string& text, const UIFillRGB& color) {
 		float oX = 0;
 		float oY = 0;
 
@@ -276,10 +297,13 @@ struct TextPainterContext {
 
 				glBegin(GL_QUADS);
 
+				glColor3ub(color.top.r, color.top.g, color.top.b);
+				glTexCoord2f(tX + tW, tY);		glVertex2f(oX + fontCharWidth, oY);
 				glTexCoord2f(tX, tY);			glVertex2f(oX, oY);
+				glColor3ub(color.bottom.r, color.bottom.g, color.bottom.b);
 				glTexCoord2f(tX, tY + tH);		glVertex2f(oX, oY + fontCharHeight);
 				glTexCoord2f(tX + tW, tY + tH); glVertex2f(oX + fontCharWidth, oY + fontCharHeight);
-				glTexCoord2f(tX + tW, tY);		glVertex2f(oX + fontCharWidth, oY);
+
 
 				glEnd();
 
@@ -301,24 +325,8 @@ struct TextPainterContext {
 		glBindTexture(GL_TEXTURE_2D, TextPainter.fontTextName);
 	}
 
-	
+
 } TextPainter;
-
-struct UIXY {
-	float x = 0;
-	float y = 0;
-};
-
-struct UIRGB {
-	unsigned char r = 0;
-	unsigned char g = 0;
-	unsigned char b = 0;
-};
-
-struct UIFillRGB {
-	UIRGB top;
-	UIRGB bottom;
-};
 
 struct UIRect {
 	UIXY pos;
@@ -328,6 +336,7 @@ struct UIRect {
 	string text;
 	int id = -1;
 
+	UIFillRGB textColor;
 	UIFillRGB background;
 	UIFillRGB border;
 
@@ -348,15 +357,15 @@ struct UIRect {
 	}
 
 	void drawBackground() const {
-		
+
 		const UIFillRGB* c = &background;
-		
+
 		glBegin(GL_QUADS);
 
 		glColor3ub(c->bottom.r, c->bottom.g, c->bottom.b);
 		glVertex3f(0, size.y, 0.0);
 		glVertex3f(size.x, size.y, 0.0);
-		
+
 		glColor3ub(c->top.r, c->top.g, c->top.b);
 		glVertex3f(size.x, 0, 0.0);
 		glVertex3f(0, 0, 0.0);
@@ -373,7 +382,7 @@ struct UIRect {
 		glEnable(GL_TEXTURE_2D);
 
 		glTranslatef(textPos.x, textPos.y, 0);
-		TextPainter.drawString(text);
+		TextPainter.drawStringColor(text, textColor);
 	}
 
 	float calculateCenter(float space, float box) {
@@ -388,7 +397,6 @@ struct UIRect {
 		textPos.x = calculateCenter(size.x, textWidth);
 		textPos.y = calculateCenter(size.y, textHeight);
 	}
-
 };
 
 struct UIGroup {
@@ -438,11 +446,11 @@ struct DrawPlane {
 	int moveAlongY = 0;
 	int moveAlongZ = 0;
 	int rotateZ = 0;
-	
+
 	bool refresh = false;
 
 	UIGroup mainUI;
-	
+
 
 	void makeRectRGB(int toSide, unsigned char* from, unsigned char* to) {
 		int fromLineLen = toSide * 2 * 4;
@@ -458,7 +466,7 @@ struct DrawPlane {
 					to[toPtr + 2] = 0;
 					to[toPtr + 3] = 255;
 				}
-				
+
 				else {
 					to[toPtr + 0] = 0;
 					to[toPtr + 1] = 255;
@@ -476,16 +484,16 @@ struct DrawPlane {
 
 		for (int y = 0; y < toSide; ++y) {
 			for (int x = 0; x < toSide; ++x) {
-				int toPtr = y*toLineLen+ x*4;
-				
+				int toPtr = y * toLineLen + x * 4;
+
 				int r = 0;
 				int g = 0;
 				int b = 0;
 				int a = 0;
 
 				for (int py = 0; py < 2; ++py) for (int px = 0; px < 2; ++px) {
-					int idx = (y*2 + py) * fromLineLen + (x*2 + px) * 4;
-					
+					int idx = (y * 2 + py) * fromLineLen + (x * 2 + px) * 4;
+
 					r += from[idx + 0];
 					g += from[idx + 1];
 					b += from[idx + 2];
@@ -504,7 +512,7 @@ struct DrawPlane {
 			}
 		}
 	}
-	
+
 	// TODO: it requires ground rework as for smaller maps, it shows fainted colors due to averaging;
 	// it should treat base color with higher weight
 	void createMipmap(int side, unsigned char* source) {
@@ -525,7 +533,7 @@ struct DrawPlane {
 
 		unsigned char* buffer = b1.get();
 		unsigned char* fromBuffer = source;
-		
+
 		int face = 1;
 
 		while (a) {
@@ -587,17 +595,19 @@ struct DrawPlane {
 		mainUI.x = 100;
 		mainUI.y = 100;
 
-		UIRect button;
-		button.background.top = { 0, 255, 255};
-		button.background.bottom = { 255, 255, 0};
+		UIFillRGB standardFill = { {10,10,200}, {30,30,250} };
+		UIFillRGB standardBorder = { {50,50,250}, {20,20,200} };
 
-		button.border.top = { 255,255,255 };
-		button.border.bottom = { 64, 64, 64 };
+		UIRect button;
+		button.background = standardFill;
+
+		button.border = standardBorder;
 
 		button.pos = { 4,4 };
 
 		button.text = "Sample button";
 		button.size = { 150, 30 };
+		button.textColor = { { 150, 150, 250 }, { 200, 200, 250 } };
 
 		button.centerText();
 
@@ -620,7 +630,7 @@ struct DrawPlane {
 		M44 mT; mT.asTranslate(posX, posY, posZ);
 
 		m.Mult(mT);
-		
+
 		m.Mult(mY);
 		m.Mult(mX);
 		m.Mult(mZ);
@@ -684,7 +694,7 @@ struct DrawPlane {
 		if (rotateZ) {
 			aZ += 0.8 * rotateZ;
 		}
-		
+
 		if (moveAlongX == 0 && moveAlongZ == 0 && moveAlongY == 0) {
 			return;
 		}
@@ -719,14 +729,14 @@ struct DrawPlane {
 		M44 mOX; mOX.asRotateX(rad(oX));
 
 		M44 m; m.asRotateX(0);
-		
+
 		m.Mult(mY);
 		m.Mult(mX);
 		m.Mult(mZ);
 
 		m.Mult(mOY);
 		m.Mult(mOX);
-	
+
 
 		Vec3F fwd = { 0,0,-1 };
 		Vec3F up = { 0,1,0 };
@@ -738,7 +748,7 @@ struct DrawPlane {
 	}
 
 	void vectorsToAngles(Vec3F& fwd, Vec3F& up) {
-		
+
 		float radY = atan2(-fwd.x, -fwd.z);
 
 		M44 revY; revY.asRotateY(-radY);
@@ -748,10 +758,10 @@ struct DrawPlane {
 
 		aX = deg(radX);
 		aY = deg(radY);
-		
+
 		M44 mX; mX.asRotateX(rad(-aX));
 		M44 mY; mY.asRotateY(rad(-aY));
-		
+
 		M44 m; m.asRotateX(0);
 
 		m.Mult(mX);
@@ -880,7 +890,7 @@ struct DrawPlane {
 
 	void frame() {
 		glLoadIdentity();
-		
+
 		++frames;
 		applyMoves();
 
@@ -903,8 +913,8 @@ struct DrawPlane {
 		drawGrid(3);
 
 		glPushMatrix();
-			glTranslatef(0, 0, -3);
-			drawQuad();
+		glTranslatef(0, 0, -3);
+		drawQuad();
 		glPopMatrix();
 
 		texturedPlane();
@@ -926,10 +936,10 @@ struct DrawPlane {
 	void drawQuad() const {
 		glPushMatrix();
 		GLdouble spin = 0.2 * frames;
-		
+
 		glRotatef(spin, 0, 1, 0);
 		glRotatef(45, 1, 0, 0);
-		
+
 
 		glColor4f(1, 1, 1, 1);
 		glBegin(GL_QUADS);
@@ -972,7 +982,7 @@ int main(int argc, char** argv) {
 	bool showEvent = false;
 	DrawPlane d;
 	d.init();
-	
+
 	App.mouseCapture(true);
 
 	const int FPS = 60;
@@ -990,25 +1000,25 @@ int main(int argc, char** argv) {
 					App.mouseCapture(!App.mouseCaptureMode);
 				}
 			}
-			
+
 			if (event.type == SDL_EVENT_WINDOW_RESIZED) {
 				SDL_WindowEvent* windowEvent = (SDL_WindowEvent*)&event;
 				App.width = windowEvent->data1;
 				App.height = windowEvent->data2;
 				d.init();
 			}
-			
+
 			if (event.type == SDL_EVENT_MOUSE_MOTION) {
-				SDL_MouseMotionEvent* mouseEvent = (SDL_MouseMotionEvent*) &event;
+				SDL_MouseMotionEvent* mouseEvent = (SDL_MouseMotionEvent*)&event;
 				if (App.mouseCaptureMode) {
 					d.pointerUpdate(mouseEvent->xrel, mouseEvent->yrel);
 				}
 			}
-			
+
 			if (event.type == SDL_EVENT_KEY_DOWN) {
 				SDL_KeyboardEvent* keyEvent = (SDL_KeyboardEvent*)&event;
 				if (false) {}
-				
+
 				else if (keyEvent->key == SDLK_A) {
 					d.moveAlongX = -1;
 				}
@@ -1082,7 +1092,7 @@ int main(int argc, char** argv) {
 		else {
 			SDL_Delay(milis);
 			d.frame();
-			
+
 		}
 	}
 
