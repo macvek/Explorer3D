@@ -599,6 +599,7 @@ struct DrawPlane {
 		UIFillRGB standardBorder = { {50,50,250}, {20,20,200} };
 
 		UIRect button;
+
 		button.background = standardFill;
 
 		button.border = standardBorder;
@@ -611,7 +612,14 @@ struct DrawPlane {
 
 		button.centerText();
 
+		UIRect otherButton;
+		otherButton = button;
+		otherButton.text = "Create Cube";
+		otherButton.centerText();
+		otherButton.pos.y += otherButton.size.y + 10;
+
 		mainUI.parts.push_back(button);
+		mainUI.parts.push_back(otherButton);
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
