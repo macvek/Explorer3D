@@ -334,6 +334,10 @@ enum UIRectState {
 	UICursorActive,
 };
 
+struct UITrigger {
+	virtual void onAction(int id) = 0;
+};
+
 struct UIRGBConfig {
 	UIFillRGB textColor;
 	UIFillRGB background;
@@ -352,9 +356,49 @@ struct UIRect {
 	UIRGBConfig* configActive;
 	UIRGBConfig* configIdle;
 
-	UIRGBConfig* currentState;
+	UITrigger* actionEvent = nullptr;
+	UIRGBConfig* currentState = nullptr;
 
 	UIRectState state = UICursorIdle;
+
+	void cursorAt(UIXY &cursor) {
+		// active cursor is controlled by buttonAt
+		if (state == UICursorActive) {
+			return;
+		}
+
+		if (inRange(cursor)) {
+			updateState(UICursorHover);
+		}
+		else {
+			updateState(UICursorIdle);
+		}
+	}
+
+	void buttonAt(UIXY cursor, int button, bool down) {
+		if (button != SDL_BUTTON_LEFT) {
+			return;
+		}
+		
+		if (inRange(cursor)) {
+			if (down && state != UICursorActive) {
+				updateState(UICursorActive);
+			}
+			else if (!down && state == UICursorActive) {
+				updateState(UICursorHover);
+				if (actionEvent) {
+					actionEvent->onAction(id);
+				}
+			}
+		}
+		else if (!down && state == UICursorActive) {
+			updateState(UICursorIdle);
+		}
+	}
+
+	bool inRange(UIXY& cursor) const {
+		return pos.x <= cursor.x && pos.x + size.x > cursor.x && pos.y <= cursor.y && pos.y + size.y > cursor.y;
+	}
 
 	void drawBorder() const {
 		const UIFillRGB* c = &currentState->border;
@@ -399,6 +443,10 @@ struct UIRect {
 	}
 
 	void render() const {
+		if (!currentState) {
+			cout << "[UI ERROR] id:" << id << " has no state set, rendering aborted\n";
+			return;
+		}
 		glTranslatef(pos.x, pos.y, 0);
 
 		glDisable(GL_TEXTURE_2D);
@@ -427,6 +475,22 @@ struct UIRect {
 struct UIGroup {
 	vector<UIRect> parts;
 
+	void cursorAt(UIXY cursor) {
+		UIXY relativeCursor{ cursor.x - x, cursor.y - y };
+
+		for (auto each = parts.begin(); each < parts.end(); ++each) {
+			each->cursorAt(relativeCursor);
+		}
+	}
+
+	void buttonAt(UIXY cursor, int button, bool down) {
+		UIXY relativeCursor{ cursor.x - x, cursor.y - y };
+
+		for (auto each = parts.begin(); each < parts.end(); ++each) {
+			each->buttonAt(relativeCursor, button, down);
+		}
+	}
+
 	float x = 0;
 	float y = 0;
 
@@ -440,7 +504,7 @@ struct UIGroup {
 	}
 };
 
-struct DrawPlane {
+struct DrawPlane : UITrigger {
 
 	vector<pair<Vec3F, Vec3F>> lines;
 	MovementStrategy movement = MoveHybrid;
@@ -620,6 +684,10 @@ struct DrawPlane {
 		//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 	}
 
+	void onAction(int uiId) {
+		cout << "Triggerd " << uiId << "\n";
+	}
+
 	void setupUI() {
 		mainUI.x = 100;
 		mainUI.y = 100;
@@ -656,30 +724,15 @@ struct DrawPlane {
 		button.text = "IDLE";
 		button.size = { 150, 30 };
 		button.centerText();
+		button.id = 100;
+		button.actionEvent = this;
 		
 		button.configIdle = &colorsIdle;
 		button.configActive = &colorsActive;
 		button.configHover = &colorsHover;
 		button.updateState(UICursorIdle);
 
-		UIRect hoverButton = button;
-		hoverButton.text = "H O V E R";
-		hoverButton.centerText();
-		hoverButton.pos.y += hoverButton.size.y + 10;
-		hoverButton.updateState(UICursorHover);
-
-		UIRect activeButton = hoverButton;
-		activeButton.text = ">> ACTIVE <<";
-		activeButton.centerText();
-		activeButton.pos.y += activeButton.size.y + 10;
-		activeButton.updateState(UICursorActive);
-
-		
-		
 		mainUI.parts.push_back(button);
-		mainUI.parts.push_back(hoverButton);
-		mainUI.parts.push_back(activeButton);
-
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
@@ -848,6 +901,16 @@ struct DrawPlane {
 		else if (movement == MoveFreespace) {
 			pointerUpdateFreespace(dX, dY);
 		}
+	}
+
+	void cursorUpdate(float x, float y) {
+		UIXY cursor = { x,y };
+		mainUI.cursorAt(cursor);
+	}
+
+	void cursorButton(float x, float y, int idx, bool down) {
+		UIXY cursor = { x,y };
+		mainUI.buttonAt(cursor, idx, down);
 	}
 
 	void updateFov(float newFov) {
@@ -1063,27 +1126,36 @@ int main(int argc, char** argv) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
 				if (mouseEvent->button == SDL_BUTTON_LEFT && !App.mouseCaptureMode) {
 					d.lines.push_back(d.traceLine(mouseEvent->x, mouseEvent->y));
+					UIXY cursor = { mouseEvent->x, mouseEvent->y };
+					d.mainUI.buttonAt(cursor, SDL_BUTTON_LEFT, false);
 				}
 				if (mouseEvent->button == SDL_BUTTON_RIGHT) {
 					App.mouseCapture(!App.mouseCaptureMode);
 				}
 			}
-
-			if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+			else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
+				if (mouseEvent->button == SDL_BUTTON_LEFT && !App.mouseCaptureMode) {
+					UIXY cursor = { mouseEvent->x, mouseEvent->y };
+					d.mainUI.buttonAt(cursor, SDL_BUTTON_LEFT, true);
+				}
+			}
+			else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
 				SDL_WindowEvent* windowEvent = (SDL_WindowEvent*)&event;
 				App.width = windowEvent->data1;
 				App.height = windowEvent->data2;
 				d.init();
 			}
-
-			if (event.type == SDL_EVENT_MOUSE_MOTION) {
+			else if (event.type == SDL_EVENT_MOUSE_MOTION) {
 				SDL_MouseMotionEvent* mouseEvent = (SDL_MouseMotionEvent*)&event;
 				if (App.mouseCaptureMode) {
 					d.pointerUpdate(mouseEvent->xrel, mouseEvent->yrel);
 				}
+				else {
+					d.cursorUpdate(mouseEvent->x, mouseEvent->y);
+				}
 			}
-
-			if (event.type == SDL_EVENT_KEY_DOWN) {
+			else if (event.type == SDL_EVENT_KEY_DOWN) {
 				SDL_KeyboardEvent* keyEvent = (SDL_KeyboardEvent*)&event;
 				if (false) {}
 
@@ -1112,8 +1184,7 @@ int main(int argc, char** argv) {
 					d.moveAlongY = -1;
 				}
 			}
-
-			if (event.type == SDL_EVENT_KEY_UP) {
+			else if (event.type == SDL_EVENT_KEY_UP) {
 				SDL_KeyboardEvent* keyEvent = (SDL_KeyboardEvent*)&event;
 				if (keyEvent->key == SDLK_KP_PLUS) {
 					d.updateFov(d.fov + d.fovDiff);
@@ -1149,8 +1220,7 @@ int main(int argc, char** argv) {
 					cout << "Movement: freespace\n";
 				}
 			}
-
-			if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+			else if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
 				break;
 			}
 			else if (showEvent) {
