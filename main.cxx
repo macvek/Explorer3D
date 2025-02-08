@@ -230,7 +230,7 @@ struct DrawPlane {
 		"NOPQRSTUVWXYZ\n"
 		"0123456789!@#\n"
 		"$%^&*()-=_+[]\n"
-		"{};':\",.<>|/\\?\n";
+		"{};':\",.<>|/\\?";
 
 	GLuint fontTextName = 0;
 	int fontCharHeight = 0;
@@ -243,7 +243,7 @@ struct DrawPlane {
 		y = 0;
 		for (auto ptr = FontMap.cbegin(); ptr < FontMap.cend(); ++ptr) {
 			if (*ptr == c) {
-				break;
+				return;
 			}
 			if (*ptr == '\n') {
 				y += 1;
@@ -253,6 +253,9 @@ struct DrawPlane {
 				x += 1;
 			}
 		}
+
+		// not found case: move to last character; which should be ?
+		--x;
 	}
 
 	void makeRectRGB(int toSide, unsigned char* from, unsigned char* to) {
@@ -683,6 +686,7 @@ struct DrawPlane {
 		float tH = fontCharHeight * tUnit;
 
 		for (auto c = text.cbegin(); c < text.cend(); ++c) {
+			if (*c == '\n') continue;
 			if (*c != ' ') {
 				charCoord(*c, cX, cY);
 				tX = cX * fontCharWidth * tUnit;
@@ -775,12 +779,7 @@ struct DrawPlane {
 		enterPixelToPixel2D();
 		//sampleOrthoDrawFont();
 		glColor4f(1, 0, 1, 1);
-		drawStringAt("abcdefghijklm"
-		"nopqrstuvwxyz"
-		"ABCDEFGHIJKLM"
-		"NOPQRSTUVWXYZ"
-		"0123456789!@#"
-		"$%^&*()-=_+[]",0,0);
+		drawStringAt(FontMap,0,0);
 		leavePixelToPixel2D();
 
 		SDL_GL_SwapWindow(App.window);
