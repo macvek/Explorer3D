@@ -189,6 +189,182 @@ enum MovementStrategy {
 	MoveXYZ,		// looking around with respect to top/bottom, moving on XZ plane, moving Up/Down only with dedicated commands
 };
 
+struct TextPainterContext {
+	const string FontMap = ""
+		"abcdefghijklm\n"
+		"nopqrstuvwxyz\n"
+		"ABCDEFGHIJKLM\n"
+		"NOPQRSTUVWXYZ\n"
+		"0123456789!@#\n"
+		"$%^&*()-=_+[]\n"
+		"{};':\",.<>|/\\?";
+
+	GLuint fontTextName = 0;
+	int fontCharHeight = 0;
+	int fontCharWidth = 0;
+
+
+	void charCoord(const char c, int& x, int& y) {
+		// it just stops and state of x/y is taken as output
+		x = 0;
+		y = 0;
+		for (auto ptr = FontMap.cbegin(); ptr < FontMap.cend(); ++ptr) {
+			if (*ptr == c) {
+				return;
+			}
+			if (*ptr == '\n') {
+				y += 1;
+				x = 0;
+			}
+			else {
+				x += 1;
+			}
+		}
+
+		// not found case: move to last character; which should be ?
+		--x;
+	}
+
+	void drawString(const string text) {
+		float oX = 0;
+		float oY = 0;
+
+		int cX = 0;
+		int cY = 0;
+
+		float tX = 0;
+		float tY = 0;
+
+		float tUnit = 1.0 / 128.0;
+		float tW = fontCharWidth * tUnit;
+		float tH = fontCharHeight * tUnit;
+
+		for (auto c = text.cbegin(); c < text.cend(); ++c) {
+			if (*c == '\n') {
+				oX = 0;
+				oY += fontCharHeight;
+			}
+			else if (*c == ' ') {
+				oX += fontCharWidth;
+			}
+			else {
+				charCoord(*c, cX, cY);
+				tX = cX * fontCharWidth * tUnit;
+				tY = cY * fontCharHeight * tUnit;
+
+				glBegin(GL_QUADS);
+
+				glTexCoord2f(tX, tY);			glVertex2f(oX, oY);
+				glTexCoord2f(tX, tY + tH);		glVertex2f(oX, oY + fontCharHeight);
+				glTexCoord2f(tX + tW, tY + tH); glVertex2f(oX + fontCharWidth, oY + fontCharHeight);
+				glTexCoord2f(tX + tW, tY);		glVertex2f(oX + fontCharWidth, oY);
+
+				glEnd();
+
+				oX += fontCharWidth;
+			}
+		}
+	}
+
+	void drawStringAt(string text, float x, float y) {
+		glPushMatrix();
+		glTranslatef(x, y, 0);
+
+		drawString(text);
+
+		glPopMatrix();
+	}
+
+	void bindTexture() {
+		glBindTexture(GL_TEXTURE_2D, TextPainter.fontTextName);
+	}
+} TextPainter;
+
+struct UIRGB {
+	unsigned char r, g, b;
+};
+
+struct UIFillRGB {
+	UIRGB top;
+	UIRGB bottom;
+};
+
+struct UIRect {
+	float x = 0;
+	float y = 0;
+	float textX = 0;
+	float textY = 0;
+	float width = 0;
+	float height = 0;
+
+	string text;
+	int id = -1;
+
+	UIFillRGB background;
+	UIFillRGB border;
+
+	void drawBorder() const {
+		const UIFillRGB* c = &border;
+
+		glBegin(GL_LINE_LOOP);
+
+		glColor3ub(c->bottom.r, c->bottom.g, c->bottom.b);
+		glVertex3f(0, height, 0.0);
+		glVertex3f(width, height, 0.0);
+
+		glColor3ub(c->top.r, c->top.g, c->top.b);
+		glVertex3f(width, 0, 0.0);
+		glVertex3f(0, 0, 0.0);
+
+		glEnd();
+	}
+
+	void drawBackground() const {
+		
+		const UIFillRGB* c = &background;
+		
+		glBegin(GL_QUADS);
+
+		glColor3ub(c->bottom.r, c->bottom.g, c->bottom.b);
+		glVertex3f(0, height, 0.0);
+		glVertex3f(width, height, 0.0);
+		
+		glColor3ub(c->top.r, c->top.g, c->top.b);
+		glVertex3f(width, 0, 0.0);
+		glVertex3f(0, 0, 0.0);
+
+		glEnd();
+	}
+
+	void render() const {
+		glTranslatef(x, y, 0);
+
+		glDisable(GL_TEXTURE_2D);
+		drawBackground();
+		drawBorder();
+		glEnable(GL_TEXTURE_2D);
+
+		glTranslatef(textX, textY, 0);
+		TextPainter.drawString(text);
+	}
+};
+
+struct UIGroup {
+	vector<UIRect> parts;
+
+	float x = 0;
+	float y = 0;
+
+	void render() const {
+		glTranslatef(x, y, 0);
+		for (auto each = parts.cbegin(); each < parts.cend(); ++each) {
+			glPushMatrix();
+			each->render();
+			glPopMatrix();
+		}
+	}
+};
+
 struct DrawPlane {
 
 	vector<pair<Vec3F, Vec3F>> lines;
@@ -223,40 +399,8 @@ struct DrawPlane {
 	
 	bool refresh = false;
 
-	const string FontMap = ""
-		"abcdefghijklm\n"
-		"nopqrstuvwxyz\n"
-		"ABCDEFGHIJKLM\n"
-		"NOPQRSTUVWXYZ\n"
-		"0123456789!@#\n"
-		"$%^&*()-=_+[]\n"
-		"{};':\",.<>|/\\?";
-
-	GLuint fontTextName = 0;
-	int fontCharHeight = 0;
-	int fontCharWidth = 0;
-
+	UIGroup mainUI;
 	
-	void charCoord(const char c, int &x, int &y) {
-		// it just stops and state of x/y is taken as output
-		x = 0;
-		y = 0;
-		for (auto ptr = FontMap.cbegin(); ptr < FontMap.cend(); ++ptr) {
-			if (*ptr == c) {
-				return;
-			}
-			if (*ptr == '\n') {
-				y += 1;
-				x = 0;
-			}
-			else {
-				x += 1;
-			}
-		}
-
-		// not found case: move to last character; which should be ?
-		--x;
-	}
 
 	void makeRectRGB(int toSide, unsigned char* from, unsigned char* to) {
 		int fromLineLen = toSide * 2 * 4;
@@ -319,6 +463,8 @@ struct DrawPlane {
 		}
 	}
 	
+	// TODO: it requires ground rework as for smaller maps, it shows fainted colors due to averaging;
+	// it should treat base color with higher weight
 	void createMipmap(int side, unsigned char* source) {
 		int a = side / 2;
 		if (a == 0) {
@@ -370,32 +516,50 @@ struct DrawPlane {
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-		glGenTextures(1, &fontTextName);
-		glBindTexture(GL_TEXTURE_2D, fontTextName);
+		glGenTextures(1, &TextPainter.fontTextName);
+		TextPainter.bindTexture();
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
-		createMipmap(128, (unsigned char*)surface->pixels);
 		SDL_DestroySurface(surface);
 
-		fontCharHeight = 18;
-		fontCharWidth = 9;
+		TextPainter.fontCharHeight = 18;
+		TextPainter.fontCharWidth = 9;
 	}
 
 	void init() {
 		loadFontTexture();
-		
+		setupUI();
+
 		glViewport(0, 0, App.width, App.height);
 		refresh = true;
 
-		
-		
 		//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+	}
 
+	void setupUI() {
+		mainUI.x = 100;
+		mainUI.y = 100;
+
+		UIRect button;
+		button.background.top = { 0, 255, 255};
+		button.background.bottom = { 255, 255, 0};
+
+		button.border.top = { 255,255,255 };
+		button.border.bottom = { 64, 64, 64 };
+
+		button.x = 4;
+		button.y = 4;
+
+		button.text = "Sample button";
+		button.width = 150;
+		button.height = 30;
+
+		mainUI.parts.push_back(button);
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
@@ -627,7 +791,7 @@ struct DrawPlane {
 			glEnable(GL_BLEND);
 			glEnable(GL_TEXTURE_2D);
 			glTranslatef(0, 0, -2);
-			glBindTexture(GL_TEXTURE_2D, fontTextName);
+			TextPainter.bindTexture();
 			glColor4f(1, 1, 1, 1);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			{
@@ -672,81 +836,6 @@ struct DrawPlane {
 		glMatrixMode(GL_MODELVIEW);
 	}
 
-	void drawString(const string text) {
-		float oX = 0;
-		float oY = 0;
-
-		int cX = 0;
-		int cY = 0;
-
-		float tX = 0;
-		float tY = 0;
-
-		float tUnit = 1.0 / 128.0;
-		float tW = fontCharWidth * tUnit;
-		float tH = fontCharHeight * tUnit;
-
-		for (auto c = text.cbegin(); c < text.cend(); ++c) {
-			if (*c == '\n') {
-				oX = 0;
-				oY += fontCharHeight;
-			}
-			else if (*c == ' ') {
-				oX += fontCharWidth;
-			}
-			else {
-				charCoord(*c, cX, cY);
-				tX = cX * fontCharWidth * tUnit;
-				tY = cY * fontCharHeight * tUnit;
-
-				glBegin(GL_QUADS);
-
-				glTexCoord2f(tX, tY);			glVertex2f(oX, oY);
-				glTexCoord2f(tX, tY + tH);		glVertex2f(oX, oY + fontCharHeight);
-				glTexCoord2f(tX + tW, tY + tH); glVertex2f(oX + fontCharWidth, oY + fontCharHeight);
-				glTexCoord2f(tX + tW, tY);		glVertex2f(oX + fontCharWidth, oY);
-
-				glEnd();
-				
-				oX += fontCharWidth;
-			}
-
-			
-		}
-	}
-
-	void drawStringAt(string text, float x, float y) {
-		glPushMatrix();
-		glTranslatef(x, y, 0);
-
-		drawString(text);
-
-		glPopMatrix();
-	}
-
-	void sampleOrthoDrawFont() {
-		glPushAttrib(GL_ENABLE_BIT);
-		glEnable(GL_BLEND);
-		glEnable(GL_TEXTURE_2D);
-
-		glBindTexture(GL_TEXTURE_2D, fontTextName);
-		glColor4f(1, 1, 1, 1);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		{
-			glBegin(GL_QUADS);
-
-			glTexCoord2f(0.0, 0.0);  glVertex2i(0, 0);
-			glTexCoord2f(0.0, 1.0);  glVertex2i(0, 128);
-			glTexCoord2f(1.0, 1.0);  glVertex2i(128, 128);
-			glTexCoord2f(1.0, 0.0);  glVertex2i(128, 0);
-
-			glEnd();
-		}
-		if (glGetError()) { cout << "ERR 1\n"; }
-
-		glPopAttrib();
-	}
-
 	void frame() {
 		glLoadIdentity();
 		
@@ -786,9 +875,7 @@ struct DrawPlane {
 		glEnd();
 
 		enterPixelToPixel2D();
-		sampleOrthoDrawFont();
-		glColor4f(1, 0, 1, 1);
-		drawStringAt(FontMap,0,0);
+		mainUI.render();
 		leavePixelToPixel2D();
 
 		SDL_GL_SwapWindow(App.window);
