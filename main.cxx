@@ -540,7 +540,11 @@ struct UIGroup {
 	}
 };
 
-
+enum MainUI_IDs {
+	SINGLEVIEW_ID = 100,
+	MULTIVIEW_ID,
+	CAMERARESET_ID
+};
 
 struct DrawPlane : UITrigger {
 
@@ -577,8 +581,6 @@ struct DrawPlane : UITrigger {
 	bool refresh = false;
 
 	UIGroup mainUI;
-	
-	
 
 
 	void makeRectRGB(int toSide, unsigned char* from, unsigned char* to) {
@@ -721,9 +723,37 @@ struct DrawPlane : UITrigger {
 	}
 
 	void onAction(int uiId) {
-		cout << "Triggerd " << uiId << "\n";
+		MainUI_IDs id = (MainUI_IDs)uiId;
+
+		switch (id) {
+		case SINGLEVIEW_ID: onSingleView(); break;
+		case MULTIVIEW_ID: onMultiView(); break;
+		case CAMERARESET_ID: onCameraReset(); break;
+		default:
+			cout << "Unsupported event id " << uiId; break;
+		}
 	}
 
+	void onSingleView() {
+
+	}
+
+	void onMultiView() {
+
+	}
+
+	void onCameraReset() {
+		posX = 0;
+		posY = 0;
+		posZ = 0;
+
+		aX = 0;
+		aY = 0;
+		aZ = 0;
+
+		updateFov(60);
+	}
+	
 	void addManyButtons(const vector<string> &names, int startingId, UIXY startingPos, vector<UIRect> &buttonsSink) {
 		int id = startingId;
 		UIXY pos = startingPos;
@@ -756,7 +786,7 @@ struct DrawPlane : UITrigger {
 		mainUI.y = 100;
 
 		vector<string> names = { "Single View", "Multi View", "Reset camera" };
-		addManyButtons(names, 100, { 0,0 }, mainUI.parts);
+		addManyButtons(names, SINGLEVIEW_ID, { 0,0 }, mainUI.parts);
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
