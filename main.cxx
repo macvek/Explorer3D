@@ -1057,9 +1057,12 @@ struct DrawPlane : UITrigger {
 		}
 		glEnd();
 
-		enterPixelToPixel2D();
-		mainUI.render();
-		leavePixelToPixel2D();
+		if (!App.mouseCaptureMode) {
+			enterPixelToPixel2D();
+			mainUI.render();
+			leavePixelToPixel2D();
+		}
+		
 
 		SDL_GL_SwapWindow(App.window);
 	}
