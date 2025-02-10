@@ -30,6 +30,46 @@ struct UIFillRGB {
 	UIRGB bottom;
 };
 
+struct UIRGBConfig {
+	UIFillRGB textColor;
+	UIFillRGB background;
+	UIFillRGB border;
+};
+
+
+struct {
+	const UIFillRGB standardTextColor = { { 150, 150, 250 }, { 200, 200, 250 } };
+	const UIFillRGB darkerTextColor = { { 120, 120, 220 }, { 180, 180, 230 } };
+
+	const UIFillRGB standardFill = { {10,10,200}, {30,30,250} };
+	const UIFillRGB standardBorder = { {50,50,250}, {20,20,200} };
+
+	const UIFillRGB brighterFill = { {30,30,220}, {50,50,255} };
+	const UIFillRGB brighterBorder = { {80,80,255}, {50,50,250} };
+
+	const UIFillRGB darkerFill = { {10,10,200}, {0,0,120} };
+	const UIFillRGB darkerBorder = { {30,30,230}, {10,10,150} };
+
+	UIRGBConfig colorsIdle;
+	UIRGBConfig colorsHover;
+	UIRGBConfig colorsActive;
+
+	void setup() {
+		colorsIdle.background = standardFill;
+		colorsIdle.border = standardBorder;
+		colorsIdle.textColor = standardTextColor;
+
+		colorsActive.background = brighterFill;
+		colorsActive.border = darkerBorder;
+		colorsActive.textColor = standardTextColor;
+
+		colorsHover.background = darkerFill;
+		colorsHover.border = brighterBorder;
+		colorsHover.textColor = darkerTextColor;
+	}
+} UIPreface;
+
+
 struct Vec3F {
 	float x, y, z;
 
@@ -198,6 +238,7 @@ void AppContext::stopSDL() {
 	SDL_Quit();
 }
 
+
 // Determines which coordinates are used for angle and movement calculation
 enum MovementStrategy {
 	MoveHybrid,		// goes towards direction, up is relative up; but rotates along Y axis with a perception of looking down
@@ -328,6 +369,10 @@ struct TextPainterContext {
 
 } TextPainter;
 
+float calculateCenter(float space, float box) {
+	return (space - box) / 2;
+}
+
 enum UIRectState {
 	UICursorIdle,
 	UICursorHover,
@@ -338,11 +383,6 @@ struct UITrigger {
 	virtual void onAction(int id) = 0;
 };
 
-struct UIRGBConfig {
-	UIFillRGB textColor;
-	UIFillRGB background;
-	UIFillRGB border;
-};
 
 struct UIRect {
 	UIXY pos;
@@ -458,10 +498,6 @@ struct UIRect {
 		TextPainter.drawStringColor(text, currentState->textColor);
 	}
 
-	float calculateCenter(float space, float box) {
-		return (space - box) / 2;
-	}
-
 	void centerText() {
 		int textWidth;
 		int textHeight;
@@ -504,6 +540,8 @@ struct UIGroup {
 	}
 };
 
+
+
 struct DrawPlane : UITrigger {
 
 	vector<pair<Vec3F, Vec3F>> lines;
@@ -540,9 +578,7 @@ struct DrawPlane : UITrigger {
 
 	UIGroup mainUI;
 	
-	UIRGBConfig colorsIdle;
-	UIRGBConfig colorsHover;
-	UIRGBConfig colorsActive;
+	
 
 
 	void makeRectRGB(int toSide, unsigned char* from, unsigned char* to) {
@@ -688,51 +724,39 @@ struct DrawPlane : UITrigger {
 		cout << "Triggerd " << uiId << "\n";
 	}
 
+	void addManyButtons(const vector<string> &names, int startingId, UIXY startingPos, vector<UIRect> &buttonsSink) {
+		int id = startingId;
+		UIXY pos = startingPos;
+
+		for (auto name = names.cbegin(); name < names.cend(); ++name) {
+			UIRect button;
+
+			button.pos = pos;
+
+			button.text = *name;
+			button.size = { 150, 30 };
+			button.centerText();
+			button.id = id;
+			button.actionEvent = this;
+
+			button.configIdle = &UIPreface.colorsIdle;
+			button.configActive = &UIPreface.colorsActive;
+			button.configHover = &UIPreface.colorsHover;
+			button.updateState(UICursorIdle);
+
+			id += 1;
+			pos.y += 35;
+
+			buttonsSink.push_back(button);
+		}
+	}
+
 	void setupUI() {
 		mainUI.x = 100;
 		mainUI.y = 100;
 
-		UIFillRGB standardTextColor = { { 150, 150, 250 }, { 200, 200, 250 } };
-		UIFillRGB darkerTextColor = { { 120, 120, 220 }, { 180, 180, 230 } };
-
-		UIFillRGB standardFill = { {10,10,200}, {30,30,250} };
-		UIFillRGB standardBorder = { {50,50,250}, {20,20,200} };
-
-		UIFillRGB brighterFill = { {30,30,220}, {50,50,255} };
-		UIFillRGB brighterBorder = { {80,80,255}, {50,50,250} };
-		
-		UIFillRGB darkerFill = { {10,10,200}, {0,0,120} };
-		UIFillRGB darkerBorder = { {30,30,230}, {10,10,150} };
-		
-
-		UIRect button;
-		
-		colorsIdle.background = standardFill;
-		colorsIdle.border = standardBorder;
-		colorsIdle.textColor = standardTextColor;
-
-		colorsActive.background = brighterFill;
-		colorsActive.border = darkerBorder;
-		colorsActive.textColor = standardTextColor;
-
-		colorsHover.background = darkerFill;
-		colorsHover.border = brighterBorder;
-		colorsHover.textColor = darkerTextColor;
-
-		button.pos = { 4,4 };
-
-		button.text = "IDLE";
-		button.size = { 150, 30 };
-		button.centerText();
-		button.id = 100;
-		button.actionEvent = this;
-		
-		button.configIdle = &colorsIdle;
-		button.configActive = &colorsActive;
-		button.configHover = &colorsHover;
-		button.updateState(UICursorIdle);
-
-		mainUI.parts.push_back(button);
+		vector<string> names = { "Single View", "Multi View", "Reset camera" };
+		addManyButtons(names, 100, { 0,0 }, mainUI.parts);
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
@@ -1112,6 +1136,7 @@ int main(int argc, char** argv) {
 	}
 
 	App.openglProperties.toStream(cout);
+	UIPreface.setup();
 
 	bool showEvent = false;
 	DrawPlane d;
