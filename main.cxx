@@ -4,6 +4,9 @@
 
 #include <iostream>
 #include <vector>
+#include <list>
+#include <string>
+#include <cstdarg>
 
 #include <Windows.h>
 #include <gl/gl.h>
@@ -13,6 +16,22 @@
 #define M_PI       3.14159265358979323846
 
 using namespace std;
+
+struct MessageLog {
+	list<string> history;
+	char buffer[120] = {};
+
+	void printf(const char* format, ...) {
+		va_list args;
+		va_start(args, format);
+		vsprintf_s(buffer, format, args);
+		va_end(args);
+
+		cout << buffer;
+
+		history.push_back(buffer);
+	}
+} Log;
 
 struct UIXY {
 	float x = 0;
@@ -70,11 +89,13 @@ struct {
 } UIPreface;
 
 
+
+
 struct Vec3F {
 	float x, y, z;
 
 	void Print() {
-		cout << " [ " << x << "\t" << y << "\t" << z << " ] " << endl;
+		Log.printf("[ %f\t%f\t%f ]\n", x, y, z);
 	}
 
 	void normalize() {
@@ -138,14 +159,14 @@ struct M44 {
 		FillFrom(r);
 	}
 
-	void Print() {
-		cout << " [ " << m[0][0] << "\t" << m[0][1] << "\t" << m[0][2] << "\t" << m[0][3] << " ] " << endl;
-		cout << " [ " << m[1][0] << "\t" << m[1][1] << "\t" << m[1][2] << "\t" << m[1][3] << " ] " << endl;
-		cout << " [ " << m[2][0] << "\t" << m[2][1] << "\t" << m[2][2] << "\t" << m[2][3] << " ] " << endl;
-		cout << " [ " << m[3][0] << "\t" << m[3][1] << "\t" << m[3][2] << "\t" << m[3][3] << " ] " << endl;
+	void Print() const {
+		Log.printf("[ %f\t%f\t%f\t%f ]\n", m[0][0], m[0][1], m[0][2], m[0][3]);
+		Log.printf("[ %f\t%f\t%f\t%f ]\n", m[1][0], m[1][1], m[1][2], m[1][3]);
+		Log.printf("[ %f\t%f\t%f\t%f ]\n", m[2][0], m[2][1], m[2][2], m[2][3]);
+		Log.printf("[ %f\t%f\t%f\t%f ]\n", m[3][0], m[3][1], m[3][2], m[3][3]);
 	}
 
-	Vec3F ApplyOnPoint(Vec3F& p) {
+	Vec3F ApplyOnPoint(Vec3F& p) const {
 		float nX = m[0][0] * p.x + m[0][1] * p.y + m[0][2] * p.z + m[0][3];
 		float nY = m[1][0] * p.x + m[1][1] * p.y + m[1][2] * p.z + m[1][3];
 		float nZ = m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3];
@@ -164,11 +185,14 @@ struct OpenGLProperties {
 	int major;
 	int minor;
 
-	void toStream(std::ostream& out) {
-		out << "VENDOR:   " << nameVendor << endl
-			<< "RENDERER: " << nameRenderer << endl
-			<< "VERSION:  " << nameVersion << endl
-			<< "SELECTED: " << major << "." << minor << endl;
+	void print() const {
+		Log.printf(
+			"VENDOR:   %s\n"
+			"RENDERER: %s\n"
+			"VERSION:  %s\n"
+			"SELECTED: %i.%i\n",
+
+			nameVendor.c_str(), nameRenderer.c_str(), nameVersion.c_str(), major, minor);
 	}
 };
 
@@ -339,6 +363,7 @@ struct TextPainterContext {
 				glBegin(GL_QUADS);
 
 				glColor3ub(color.top.r, color.top.g, color.top.b);
+				glColor3ub(color.top.r, color.top.g, color.top.b);
 				glTexCoord2f(tX + tW, tY);		glVertex2f(oX + fontCharWidth, oY);
 				glTexCoord2f(tX, tY);			glVertex2f(oX, oY);
 				glColor3ub(color.bottom.r, color.bottom.g, color.bottom.b);
@@ -484,7 +509,7 @@ struct UIRect {
 
 	void render() const {
 		if (!currentState) {
-			cout << "[UI ERROR] id:" << id << " has no state set, rendering aborted\n";
+			Log.printf("[UI ERROR] id: %i has no state set, rendering aborted\n", id);
 			return;
 		}
 		glTranslatef(pos.x, pos.y, 0);
@@ -543,7 +568,8 @@ struct UIGroup {
 enum MainUI_IDs {
 	SINGLEVIEW_ID = 100,
 	MULTIVIEW_ID,
-	CAMERARESET_ID
+	CAMERARESET_ID,
+	DISPLAYCOORDS_ID
 };
 
 struct DrawPlane : UITrigger {
@@ -692,8 +718,8 @@ struct DrawPlane : UITrigger {
 			return;
 		}
 
-		cout << "W: " << surface->w << " " << surface->h << "\n";
-		printf("0x%x\n", surface->format);
+		Log.printf("W: %i %i\n", surface->w, surface->h);
+		Log.printf("Surface format: 0x%x\n", surface->format);
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -729,8 +755,9 @@ struct DrawPlane : UITrigger {
 		case SINGLEVIEW_ID: onSingleView(); break;
 		case MULTIVIEW_ID: onMultiView(); break;
 		case CAMERARESET_ID: onCameraReset(); break;
+		case DISPLAYCOORDS_ID: onDisplayCoords(); break;
 		default:
-			cout << "Unsupported event id " << uiId; break;
+			Log.printf("Unsupported event id %i\n", uiId); break;
 		}
 	}
 
@@ -785,8 +812,12 @@ struct DrawPlane : UITrigger {
 		mainUI.x = 100;
 		mainUI.y = 100;
 
-		vector<string> names = { "Single View", "Multi View", "Reset camera" };
+		vector<string> names = { "Single View", "Multi View", "Reset camera", "Display coords"};
 		addManyButtons(names, SINGLEVIEW_ID, { 0,0 }, mainUI.parts);
+	}
+
+	void onDisplayCoords() {
+		Log.printf("[ %.3f %.3f %.3f ], [%.3f %.3f %.3f]\n", posX, posY, posZ, aX, aY, aZ);
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
@@ -818,7 +849,6 @@ struct DrawPlane : UITrigger {
 		lineEnd.x *= farPlane;
 		lineEnd.y *= farPlane;
 		lineEnd.z *= farPlane;
-
 		p.first = m.ApplyOnPoint(lineStart);
 		p.second = m.ApplyOnPoint(lineEnd);
 		p.first.Print();
@@ -1041,7 +1071,8 @@ struct DrawPlane : UITrigger {
 
 				glEnd();
 			}
-			if (glGetError()) { cout << "ERR 1\n"; }
+			GLenum err = glGetError();
+			if (err) { Log.printf("[ ERROR ] %i\n", err); }
 
 			glDisable(GL_BLEND);
 			glDisable(GL_TEXTURE_2D);
@@ -1161,11 +1192,11 @@ struct DrawPlane : UITrigger {
 
 int main(int argc, char** argv) {
 	if (!App.startSDL()) {
-		cout << "Failed to start, error: " << App.lastError << endl;
+		Log.printf("Failed to start, error: %i\n", App.lastError);
 		return 1;
 	}
 
-	App.openglProperties.toStream(cout);
+	App.openglProperties.print();
 	UIPreface.setup();
 
 	bool showEvent = false;
@@ -1244,13 +1275,16 @@ int main(int argc, char** argv) {
 			}
 			else if (event.type == SDL_EVENT_KEY_UP) {
 				SDL_KeyboardEvent* keyEvent = (SDL_KeyboardEvent*)&event;
-				if (keyEvent->key == SDLK_KP_PLUS) {
+				if (keyEvent->key == SDLK_GRAVE) {
+					Log.printf("CONSOLE\n");
+				}
+				else if (keyEvent->key == SDLK_KP_PLUS) {
 					d.updateFov(d.fov + d.fovDiff);
-					cout << "FOV:" << d.fov << endl;
+					Log.printf("FOV: %f\n", d.fov);
 				}
 				else if (keyEvent->key == SDLK_KP_MINUS) {
 					d.updateFov(d.fov - d.fovDiff);
-					cout << "FOV:" << d.fov << endl;
+					Log.printf("FOV: %f\n", d.fov);;
 				}
 				else if (keyEvent->key == SDLK_A || keyEvent->key == SDLK_D) {
 					d.moveAlongX = 0;
@@ -1266,23 +1300,23 @@ int main(int argc, char** argv) {
 				}
 				else if (keyEvent->key == SDLK_8) {
 					d.movement = MoveHybrid;
-					cout << "Movement: hybrid\n";
+					Log.printf("Movement: hybrid\n");
 				}
 				else if (keyEvent->key == SDLK_9) {
 					d.movement = MoveXYZ;
 					d.aZ = 0;
-					cout << "Movement: xyz\n";
+					Log.printf("Movement: xyz\n");
 				}
 				else if (keyEvent->key == SDLK_0) {
 					d.movement = MoveFreespace;
-					cout << "Movement: freespace\n";
+					Log.printf("Movement: freespace\n");
 				}
 			}
 			else if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
 				break;
 			}
 			else if (showEvent) {
-				std::cout << "Event " << event.type << std::endl;
+				Log.printf("Event %i\n", event.type);
 			}
 		}
 		else {
