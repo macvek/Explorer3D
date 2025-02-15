@@ -904,8 +904,6 @@ struct DrawPlane : UITrigger {
 		lineEnd.z *= farPlane;
 		p.first = m.ApplyOnPoint(lineStart);
 		p.second = m.ApplyOnPoint(lineEnd);
-		p.first.Print();
-		p.second.Print();
 
 		return p;
 	}
