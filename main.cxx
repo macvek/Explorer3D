@@ -20,6 +20,7 @@ using namespace std;
 struct MessageLog {
 	list<string> history;
 	char buffer[120] = {};
+	int unreadMessages = 0;
 
 	void printf(const char* format, ...) {
 		va_list args;
@@ -29,7 +30,28 @@ struct MessageLog {
 
 		cout << buffer;
 
-		history.push_back(buffer);
+		char* start = buffer;
+		char* ptr = buffer;
+
+		for (;;) {
+			char here = *ptr;
+			if (here == '\n' || (here == 0 && ptr-start>1) ) {
+				*ptr = 0;
+				history.push_back(start);
+				++unreadMessages;
+				start = ptr + 1;
+			}
+
+			if (here == 0) {
+				break;
+			}
+			else {
+				++ptr;
+			}
+		}
+
+		unreadMessages = min(10, unreadMessages);
+
 	}
 } Log;
 
@@ -333,6 +355,7 @@ struct TextPainterContext {
 		drawStringColor(text, color);
 	}
 
+	const int TAB_SIZE = 8;
 	void drawStringColor(const string& text, const UIFillRGB& color) {
 		float oX = 0;
 		float oY = 0;
@@ -348,7 +371,13 @@ struct TextPainterContext {
 		float tH = fontCharHeight * tUnit;
 
 		for (auto c = text.cbegin(); c < text.cend(); ++c) {
-			if (*c == '\n') {
+			if (*c == '\t') {
+				int xIdx = oX / fontCharWidth;
+				int tabbedIdx = (xIdx / TAB_SIZE + 1) * TAB_SIZE;
+				oX = tabbedIdx * fontCharWidth;
+
+			}
+			else if (*c == '\n') {
 				oX = 0;
 				oY += fontCharHeight;
 			}
@@ -608,6 +637,30 @@ struct DrawPlane : UITrigger {
 
 	UIGroup mainUI;
 
+	const int framesForMessage = 120;
+	int endOfMessageFrame = 0;
+
+	void showMessages() {
+		if (endOfMessageFrame == 0 && Log.unreadMessages > 0) {
+			endOfMessageFrame = framesForMessage;
+		}
+		
+		auto ptr = Log.history.cend();
+		for (int i = Log.unreadMessages - 1; i >= 0; --i) {
+			--ptr;
+
+			glPushMatrix();
+			glTranslatef(0, i * TextPainter.fontCharHeight + 2, 0);
+			TextPainter.drawString(*ptr);
+			glPopMatrix();
+		}
+		
+
+		endOfMessageFrame -= 1;
+		if (endOfMessageFrame == 0) {
+			Log.unreadMessages -= 1;
+		}
+	}
 
 	void makeRectRGB(int toSide, unsigned char* from, unsigned char* to) {
 		int fromLineLen = toSide * 2 * 4;
@@ -1142,12 +1195,18 @@ struct DrawPlane : UITrigger {
 		}
 		glEnd();
 
-		if (!App.mouseCaptureMode) {
+		if (!App.mouseCaptureMode)  {
 			enterPixelToPixel2D();
 			mainUI.render();
 			leavePixelToPixel2D();
 		}
+
 		
+		if (Log.unreadMessages > 0) {
+			enterPixelToPixel2D();
+			showMessages();
+			leavePixelToPixel2D();
+		}
 
 		SDL_GL_SwapWindow(App.window);
 	}
