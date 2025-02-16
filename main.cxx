@@ -610,13 +610,15 @@ struct Camera {
 	Vec3F pos = { 0,0,0 };
 	Vec3F angle = { 0,0,0 };
 
+	XYFloat viewSize = { 0,0 };
+
 	void reset() {
 		pos = { 0,0,0 };
 		angle = { 0,0,0 };
 		fov = 0;
 	}
 
-	void displayCoords() {
+	void displayCoords() const {
 		Log.printf("[ %.3f %.3f %.3f ], [%.3f %.3f %.3f]\n", pos.x, pos.y, pos.z, angle.x, angle.y, angle.z);
 	}
 };
@@ -633,10 +635,6 @@ struct DrawPlane : UITrigger {
 	const float nearPlane = 0.1;
 	const float farPlane = 10;
 
-	float frustumRight = 0;
-	float frustumTop = 0;
-
-	GLdouble fov = 60;
 	int frames = 0;
 
 	const float moveSpeed = 0.02;
@@ -653,7 +651,6 @@ struct DrawPlane : UITrigger {
 	const int framesForMessage = 120;
 	int endOfMessageFrame = 0;
 
-	XYFloat cameraViewSize;
 	bool multiViewEnabled = false;
 
 	void showMessages() {
@@ -889,11 +886,11 @@ struct DrawPlane : UITrigger {
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
-		float xRatio = x / cameraViewSize.x * 2 - 1;
-		float yRatio = y / cameraViewSize.y * 2 - 1;
+		float xRatio = x / camera.viewSize.x * 2 - 1;
+		float yRatio = y / camera.viewSize.y * 2 - 1;
 
-		float pRight = xRatio * frustumRight; // minus xRatio because we rotate along Y axis
-		float pTop = -yRatio * frustumTop;
+		float pRight = xRatio * camera.frustumRight; // minus xRatio because we rotate along Y axis
+		float pTop = -yRatio * camera.frustumTop;
 
 		M44 m; m.asRotateX(0);
 
@@ -1062,7 +1059,7 @@ struct DrawPlane : UITrigger {
 	}
 
 	void updateFov(float newFov) {
-		fov = max<float>(min<float>(newFov, fovMax), fovMin);
+		camera.fov = max<float>(min<float>(newFov, fovMax), fovMin);
 		refreshDrawDimentions = true;
 	}
 
@@ -1079,7 +1076,7 @@ struct DrawPlane : UITrigger {
 			GLdouble tangent;
 
 			aspectRatio = (1.0 * width) / height;
-			tangent = tan(rad(fov / 2));
+			tangent = tan(rad(camera.fov / 2));
 
 			top = tangent * nearPlane;
 			right = top;
@@ -1091,8 +1088,8 @@ struct DrawPlane : UITrigger {
 			}
 
 			glFrustum(-right, right, -top, top, nearPlane, farPlane);
-			frustumRight = right;
-			frustumTop = top;
+			camera.frustumRight = right;
+			camera.frustumTop = top;
 		}
 		else {
 			glOrtho(-1, 1, -1, 1, nearPlane, farPlane);
@@ -1173,10 +1170,10 @@ struct DrawPlane : UITrigger {
 
 		if (refreshDrawDimentions) {
 			refreshDrawDimentions = false;
-			cameraViewSize = { (float)App.windowWidth, (float)App.windowHeight };
+			camera.viewSize = { (float)App.windowWidth, (float)App.windowHeight };
 
-			glViewport(0, 0, cameraViewSize.x, cameraViewSize.y);
-			updateProjection(cameraViewSize.x, cameraViewSize.y);
+			glViewport(0, 0, camera.viewSize.x, camera.viewSize.y);
+			updateProjection(camera.viewSize.x, camera.viewSize.y);
 		}
 		glClearColor(0, 0, 0, 1);
 		glShadeModel(GL_SMOOTH);
@@ -1212,7 +1209,7 @@ struct DrawPlane : UITrigger {
 
 		++frames;
 		if (multiViewEnabled) {
-			glViewport(0, 0, cameraViewSize.x/2, cameraViewSize.y/2);
+			glViewport(0, 0, camera.viewSize.x/2, camera.viewSize.y/2);
 			drawCameraView();
 			glViewport(0, 0, App.windowWidth, App.windowHeight);
 		}
@@ -1363,12 +1360,12 @@ int main(int argc, char** argv) {
 					Log.printf("CONSOLE\n");
 				}
 				else if (keyEvent->key == SDLK_KP_PLUS) {
-					d.updateFov(d.fov + d.fovDiff);
-					Log.printf("FOV: %f\n", d.fov);
+					d.updateFov(d.camera.fov + d.fovDiff);
+					Log.printf("FOV: %f\n", d.camera.fov);
 				}
 				else if (keyEvent->key == SDLK_KP_MINUS) {
-					d.updateFov(d.fov - d.fovDiff);
-					Log.printf("FOV: %f\n", d.fov);;
+					d.updateFov(d.camera.fov - d.fovDiff);
+					Log.printf("FOV: %f\n", d.camera.fov);
 				}
 				else if (keyEvent->key == SDLK_A || keyEvent->key == SDLK_D) {
 					d.moveAlongX = 0;
