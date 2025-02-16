@@ -55,7 +55,7 @@ struct MessageLog {
 	}
 } Log;
 
-struct UIXY {
+struct XYFloat {
 	float x = 0;
 	float y = 0;
 };
@@ -220,8 +220,8 @@ struct OpenGLProperties {
 
 
 struct AppContext {
-	int width = 600;
-	int height = 600;
+	int windowWidth = 600;
+	int windowHeight = 600;
 
 	float pointerSpeed = 0.2;
 
@@ -239,7 +239,7 @@ struct AppContext {
 		SDL_SetWindowRelativeMouseMode(App.window, newState);
 
 		if (mouseCaptureMode && false == newState) {
-			SDL_WarpMouseInWindow(window, width / 2, height / 2);
+			SDL_WarpMouseInWindow(window, (float)(windowWidth / 2), (float)(windowHeight / 2));
 		}
 
 		mouseCaptureMode = newState;
@@ -256,7 +256,7 @@ bool AppContext::startSDL() {
 	int requestedValue = 8;
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, requestedValue);
 
-	window = SDL_CreateWindow("Explorer3D", width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	window = SDL_CreateWindow("Explorer3D", windowWidth, windowHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	renderer = SDL_CreateRenderer(window, "opengl");
 	glcontext = SDL_GL_CreateContext(window);
 
@@ -439,9 +439,9 @@ struct UITrigger {
 
 
 struct UIRect {
-	UIXY pos;
-	UIXY textPos;
-	UIXY size;
+	XYFloat pos;
+	XYFloat textPos;
+	XYFloat size;
 
 	string text;
 	int id = -1;
@@ -455,7 +455,7 @@ struct UIRect {
 
 	UIRectState state = UICursorIdle;
 
-	void cursorAt(UIXY &cursor) {
+	void cursorAt(XYFloat &cursor) {
 		// active cursor is controlled by buttonAt
 		if (state == UICursorActive) {
 			return;
@@ -469,7 +469,7 @@ struct UIRect {
 		}
 	}
 
-	void buttonAt(UIXY cursor, int button, bool down) {
+	void buttonAt(XYFloat cursor, int button, bool down) {
 		if (button != SDL_BUTTON_LEFT) {
 			return;
 		}
@@ -490,7 +490,7 @@ struct UIRect {
 		}
 	}
 
-	bool inRange(UIXY& cursor) const {
+	bool inRange(XYFloat& cursor) const {
 		return pos.x <= cursor.x && pos.x + size.x > cursor.x && pos.y <= cursor.y && pos.y + size.y > cursor.y;
 	}
 
@@ -565,16 +565,16 @@ struct UIRect {
 struct UIGroup {
 	vector<UIRect> parts;
 
-	void cursorAt(UIXY cursor) {
-		UIXY relativeCursor{ cursor.x - x, cursor.y - y };
+	void cursorAt(XYFloat cursor) {
+		XYFloat relativeCursor{ cursor.x - x, cursor.y - y };
 
 		for (auto each = parts.begin(); each < parts.end(); ++each) {
 			each->cursorAt(relativeCursor);
 		}
 	}
 
-	void buttonAt(UIXY cursor, int button, bool down) {
-		UIXY relativeCursor{ cursor.x - x, cursor.y - y };
+	void buttonAt(XYFloat cursor, int button, bool down) {
+		XYFloat relativeCursor{ cursor.x - x, cursor.y - y };
 
 		for (auto each = parts.begin(); each < parts.end(); ++each) {
 			each->buttonAt(relativeCursor, button, down);
@@ -633,12 +633,14 @@ struct DrawPlane : UITrigger {
 	int moveAlongZ = 0;
 	int rotateZ = 0;
 
-	bool refresh = false;
+	bool refreshDrawDimentions = false;
 
 	UIGroup mainUI;
 
 	const int framesForMessage = 120;
 	int endOfMessageFrame = 0;
+
+	
 
 	void showMessages() {
 		if (endOfMessageFrame == 0 && Log.unreadMessages > 0) {
@@ -795,10 +797,11 @@ struct DrawPlane : UITrigger {
 		loadFontTexture();
 		setupUI();
 
-		glViewport(0, 0, App.width, App.height);
-		refresh = true;
+		onResize();
+	}
 
-		//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+	void onResize() {
+		refreshDrawDimentions = true;
 	}
 
 	void onAction(int uiId) {
@@ -815,11 +818,11 @@ struct DrawPlane : UITrigger {
 	}
 
 	void onSingleView() {
-
+		Log.printf("Single View\n");
 	}
 
 	void onMultiView() {
-
+		Log.printf("Multi View\n");
 	}
 
 	void onCameraReset() {
@@ -834,9 +837,9 @@ struct DrawPlane : UITrigger {
 		updateFov(60);
 	}
 	
-	void addManyButtons(const vector<string> &names, int startingId, UIXY startingPos, vector<UIRect> &buttonsSink) {
+	void addManyButtons(const vector<string> &names, int startingId, XYFloat startingPos, vector<UIRect> &buttonsSink) {
 		int id = startingId;
-		UIXY pos = startingPos;
+		XYFloat pos = startingPos;
 
 		for (auto name = names.cbegin(); name < names.cend(); ++name) {
 			UIRect button;
@@ -874,8 +877,8 @@ struct DrawPlane : UITrigger {
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
-		float xRatio = x / App.width * 2 - 1;
-		float yRatio = y / App.height * 2 - 1;
+		float xRatio = x / App.windowWidth * 2 - 1;
+		float yRatio = y / App.windowHeight * 2 - 1;
 
 		float pRight = xRatio * frustumRight; // minus xRatio because we rotate along Y axis
 		float pTop = -yRatio * frustumTop;
@@ -1039,18 +1042,18 @@ struct DrawPlane : UITrigger {
 	}
 
 	void cursorUpdate(float x, float y) {
-		UIXY cursor = { x,y };
+		XYFloat cursor = { x,y };
 		mainUI.cursorAt(cursor);
 	}
 
 	void cursorButton(float x, float y, int idx, bool down) {
-		UIXY cursor = { x,y };
+		XYFloat cursor = { x,y };
 		mainUI.buttonAt(cursor, idx, down);
 	}
 
 	void updateFov(float newFov) {
 		fov = max<float>(min<float>(newFov, fovMax), fovMin);
-		refresh = true;
+		refreshDrawDimentions = true;
 	}
 
 	void updateProjection(float width, float height) {
@@ -1136,7 +1139,7 @@ struct DrawPlane : UITrigger {
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
 		glLoadIdentity();
-		glOrtho(0, App.width, App.height, 0, -1, 1);
+		glOrtho(0, App.windowWidth, App.windowHeight, 0, -1, 1);
 
 		glMatrixMode(GL_MODELVIEW);
 
@@ -1155,15 +1158,13 @@ struct DrawPlane : UITrigger {
 		glMatrixMode(GL_MODELVIEW);
 	}
 
-	void frame() {
-		glLoadIdentity();
-
-		++frames;
+	void drawCameraView() {
 		applyMoves();
 
-		if (refresh) {
-			refresh = false;
-			updateProjection(App.width, App.height);
+		if (refreshDrawDimentions) {
+			refreshDrawDimentions = false;
+			glViewport(0, 0, App.windowWidth, App.windowHeight);
+			updateProjection(App.windowWidth, App.windowHeight);
 		}
 		glClearColor(0, 0, 0, 1);
 		glShadeModel(GL_SMOOTH);
@@ -1192,13 +1193,20 @@ struct DrawPlane : UITrigger {
 			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
 		}
 		glEnd();
+	}
+
+	void frame() {
+		glLoadIdentity();
+
+		++frames;
+		
+		drawCameraView();
 
 		if (!App.mouseCaptureMode)  {
 			enterPixelToPixel2D();
 			mainUI.render();
 			leavePixelToPixel2D();
 		}
-
 		
 		if (Log.unreadMessages > 0) {
 			enterPixelToPixel2D();
@@ -1272,7 +1280,7 @@ int main(int argc, char** argv) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
 				if (mouseEvent->button == SDL_BUTTON_LEFT && !App.mouseCaptureMode) {
 					d.lines.push_back(d.traceLine(mouseEvent->x, mouseEvent->y));
-					UIXY cursor = { mouseEvent->x, mouseEvent->y };
+					XYFloat cursor = { mouseEvent->x, mouseEvent->y };
 					d.mainUI.buttonAt(cursor, SDL_BUTTON_LEFT, false);
 				}
 				if (mouseEvent->button == SDL_BUTTON_RIGHT) {
@@ -1282,15 +1290,15 @@ int main(int argc, char** argv) {
 			else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
 				if (mouseEvent->button == SDL_BUTTON_LEFT && !App.mouseCaptureMode) {
-					UIXY cursor = { mouseEvent->x, mouseEvent->y };
+					XYFloat cursor = { mouseEvent->x, mouseEvent->y };
 					d.mainUI.buttonAt(cursor, SDL_BUTTON_LEFT, true);
 				}
 			}
 			else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
 				SDL_WindowEvent* windowEvent = (SDL_WindowEvent*)&event;
-				App.width = windowEvent->data1;
-				App.height = windowEvent->data2;
-				d.init();
+				App.windowWidth = windowEvent->data1;
+				App.windowHeight = windowEvent->data2;
+				d.onResize();
 			}
 			else if (event.type == SDL_EVENT_MOUSE_MOTION) {
 				SDL_MouseMotionEvent* mouseEvent = (SDL_MouseMotionEvent*)&event;
