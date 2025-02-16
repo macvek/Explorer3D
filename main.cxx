@@ -230,7 +230,7 @@ struct OpenGLProperties {
 
 
 struct AppContext {
-	int windowWidth = 600;
+	int windowWidth = 1200;
 	int windowHeight = 600;
 
 	float pointerSpeed = 0.2;
@@ -622,6 +622,7 @@ struct Camera {
 	float farPlane = 10;
 	
 	bool perspective = true;
+	bool adjustOrtho = false;
 	float frustumRight = 0;
 	float frustumTop = 0;
 	GLdouble fov = 60;
@@ -642,15 +643,13 @@ struct Camera {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 
+		GLdouble right;
+		GLdouble top;
+		GLdouble aspectRatio;
+		aspectRatio = (1.0 * viewSize.x) / viewSize.y;
+
 		if (perspective) {
-
-			GLdouble right;
-			GLdouble top;
-			GLdouble aspectRatio;
-			GLdouble tangent;
-
-			aspectRatio = (1.0 * viewSize.x) / viewSize.y;
-			tangent = tan(rad(fov / 2));
+			GLdouble tangent = tan(rad(fov / 2));
 
 			top = tangent * nearPlane;
 			right = top;
@@ -666,7 +665,21 @@ struct Camera {
 			frustumTop = top;
 		}
 		else {
-			glOrtho(orthoRange.left, orthoRange.right, orthoRange.bottom, orthoRange.top, nearPlane, farPlane);
+			if (adjustOrtho) {
+				if (viewSize.x > viewSize.y) {
+					right = orthoRange.right;
+					top = orthoRange.top / aspectRatio;
+				}
+				else {
+					right = orthoRange.right * aspectRatio;
+					top = orthoRange.top;
+				}
+
+				glOrtho(-right, right, -top, top, nearPlane, farPlane);
+			}
+			else {
+				glOrtho(orthoRange.left, orthoRange.right, orthoRange.bottom, orthoRange.top, nearPlane, farPlane);
+			}
 		}
 	}
 
@@ -692,6 +705,10 @@ struct Camera {
 struct DrawPlane : UITrigger {
 	Camera camera;
 	Camera consoleView;
+
+	Camera cameraXZ;
+	Camera cameraXY;
+	Camera cameraZY;
 
 	vector<pair<Vec3F, Vec3F>> lines;
 	MovementStrategy movement = MoveHybrid;
@@ -872,9 +889,19 @@ struct DrawPlane : UITrigger {
 		consoleView.perspective = false;
 	}
 
+	void setupXYZCameras() {
+		cameraXZ.perspective = false;
+		cameraXZ.adjustOrtho = true;
+		cameraXZ.orthoRange = { -10,10,-10,10 };
+		cameraXZ.farPlane = 100;
+		cameraXZ.nearPlane = -100;
+		cameraXZ.angle = { -90,0,0 };
+	}
+
 	void init() {
 		loadFontTexture();
 		setupConsoleView();
+		setupXYZCameras();
 		setupUI();
 		onResize();
 	}
@@ -1211,6 +1238,7 @@ struct DrawPlane : UITrigger {
 			glLoadIdentity();
 			showMessages();
 		}
+
 		glPopAttrib();
 	}
 
@@ -1223,25 +1251,21 @@ struct DrawPlane : UITrigger {
 		applyMoves(camera);
 
 		if (multiViewEnabled) {
-			camera.viewSize = { (float)(App.windowWidth / 2), (float)(App.windowHeight / 2) };
-			camera.viewPos = { 0,0 };
+			XYFloat viewSize = { (float)(App.windowWidth / 2), (float)(App.windowHeight / 2) };
+			camera.viewSize = viewSize;
+			camera.viewPos = { 0,viewSize.y };
 			renderScene(camera);
 			
-			camera.viewPos = { camera.viewSize.x,0 };
-			renderScene(camera);
+			cameraXZ.viewSize = viewSize;
+			cameraXZ.viewPos = { viewSize.x, viewSize.y };
+			renderScene(cameraXZ);
 			
-			camera.viewPos = { camera.viewSize.x,camera.viewSize.y };
-			renderScene(camera);
-			
-			camera.viewPos = { 0,camera.viewSize.y };
-			renderScene(camera);
 		}
 		else {
 			camera.viewSize = { (float)(App.windowWidth), (float)(App.windowHeight) };
 			camera.viewPos = { 0,0 };
 			renderScene(camera);
 		}
-
 
 		renderOverlay2D();
 
