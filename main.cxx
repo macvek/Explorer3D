@@ -17,6 +17,14 @@
 
 using namespace std;
 
+double rad(double deg) {
+	return M_PI / 180 * deg;
+}
+
+double deg(double rad) {
+	return 180 / M_PI * rad;
+}
+
 struct MessageLog {
 	list<string> history;
 	char buffer[120] = {};
@@ -603,6 +611,10 @@ enum MainUI_IDs {
 };
 
 struct Camera {
+	const float nearPlane = 0.1;
+	const float farPlane = 10;
+	
+	bool perspetive = true;
 	float frustumRight = 0;
 	float frustumTop = 0;
 	GLdouble fov = 60;
@@ -612,6 +624,50 @@ struct Camera {
 
 	XYFloat viewPos = { 0,0 };
 	XYFloat viewSize = { 0,0 };
+
+	void applyViewport() {
+		glViewport(viewPos.x, viewPos.y, viewPos.x + viewSize.x, viewPos.y + viewSize.y);
+	}
+
+	void applyProjection() {
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+
+		if (perspetive) {
+
+			GLdouble right;
+			GLdouble top;
+			GLdouble aspectRatio;
+			GLdouble tangent;
+
+			aspectRatio = (1.0 * viewSize.x) / viewSize.y;
+			tangent = tan(rad(fov / 2));
+
+			top = tangent * nearPlane;
+			right = top;
+			if (viewSize.x > viewSize.y) {
+				right *= aspectRatio;
+			}
+			else {
+				top /= aspectRatio;
+			}
+
+			glFrustum(-right, right, -top, top, nearPlane, farPlane);
+			frustumRight = right;
+			frustumTop = top;
+		}
+		else {
+			glOrtho(-1, 1, -1, 1, nearPlane, farPlane);
+		}
+	}
+
+	void eyeCoords() const {
+		glRotatef(-angle.z, 0, 0, 1);
+		glRotatef(-angle.x, 1, 0, 0);
+		glRotatef(-angle.y, 0, 1, 0);
+
+		glTranslatef(-pos.x, -pos.y, -pos.z);
+	}
 
 	void reset() {
 		pos = { 0,0,0 };
@@ -632,9 +688,6 @@ struct DrawPlane : UITrigger {
 	const int fovDiff = 1;
 	const float fovMax = 160;
 	const float fovMin = 5;
-
-	const float nearPlane = 0.1;
-	const float farPlane = 10;
 
 	int frames = 0;
 
@@ -908,11 +961,11 @@ struct DrawPlane : UITrigger {
 		pair<Vec3F, Vec3F> p;
 
 		Vec3F lineStart = { 0,0,0 };
-		Vec3F lineEnd = { pRight,pTop,-nearPlane };
+		Vec3F lineEnd = { pRight,pTop,-c.nearPlane };
 		lineEnd.normalize();
-		lineEnd.x *= farPlane;
-		lineEnd.y *= farPlane;
-		lineEnd.z *= farPlane;
+		lineEnd.x *= c.farPlane;
+		lineEnd.y *= c.farPlane;
+		lineEnd.z *= c.farPlane;
 		p.first = m.ApplyOnPoint(lineStart);
 		p.second = m.ApplyOnPoint(lineEnd);
 
@@ -1061,54 +1114,7 @@ struct DrawPlane : UITrigger {
 		c.fov = max<float>(min<float>(newFov, fovMax), fovMin);
 	}
 
-	void updateProjection(Camera &c) {
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-
-		bool perspetive = true;
-		if (perspetive) {
-
-			GLdouble right;
-			GLdouble top;
-			GLdouble aspectRatio;
-			GLdouble tangent;
-
-			aspectRatio = (1.0 * c.viewSize.x) / c.viewSize.y;
-			tangent = tan(rad(c.fov / 2));
-
-			top = tangent * nearPlane;
-			right = top;
-			if (c.viewSize.x > c.viewSize.y) {
-				right *= aspectRatio;
-			}
-			else {
-				top /= aspectRatio;
-			}
-
-			glFrustum(-right, right, -top, top, nearPlane, farPlane);
-			c.frustumRight = right;
-			c.frustumTop = top;
-		}
-		else {
-			glOrtho(-1, 1, -1, 1, nearPlane, farPlane);
-		}
-
-		glMatrixMode(GL_MODELVIEW);
-	}
-
-	double rad(double deg) {
-		return M_PI / 180 * deg;
-	}
-
-	double deg(double rad) {
-		return 180 / M_PI * rad;
-	}
-
-	void eyeCoords(const Camera c) const {
-		glRotatef(-c.angle.z, 0, 0, 1);
-		glRotatef(-c.angle.x, 1, 0, 0);
-		glRotatef(-c.angle.y, 0, 1, 0);
-	}
+	
 
 	void texturedPlane() {
 		// playing with texture 
@@ -1164,18 +1170,15 @@ struct DrawPlane : UITrigger {
 	}
 
 	void renderScene(Camera& c) {
-		applyMoves(c);
+		c.applyViewport();
+		c.applyProjection();
 
-		glViewport(c.viewPos.x, c.viewPos.y, c.viewPos.x + c.viewSize.x, c.viewPos.y + c.viewSize.y);
-		updateProjection(c);
-	
+		glMatrixMode(GL_MODELVIEW);
 		glClearColor(0, 0, 0, 1);
 		glShadeModel(GL_SMOOTH);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		eyeCoords(c);
-
-		glTranslatef(-c.pos.x, -c.pos.y, -c.pos.z);
+		c.eyeCoords();
 
 		glColor3f(0.3, 0.3, 0.3);
 		drawGrid(0);
@@ -1202,7 +1205,9 @@ struct DrawPlane : UITrigger {
 		glLoadIdentity();
 
 		++frames;
-	
+		
+		applyMoves(camera);
+
 		renderScene(camera);
 
 
