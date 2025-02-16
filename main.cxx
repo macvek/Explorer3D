@@ -996,8 +996,9 @@ struct DrawPlane : UITrigger {
 	}
 
 	pair<Vec3F, Vec3F> traceLine(const Camera& c, const float x, const float y) {
+		int updatedY = App.windowHeight - (c.viewPos.y + c.viewSize.y) + y; 
 		float xRatio = x / c.viewSize.x * 2 - 1;
-		float yRatio = y / c.viewSize.y * 2 - 1;
+		float yRatio = updatedY / c.viewSize.y * 2 - 1;
 
 		float pRight = xRatio * c.frustumRight; // minus xRatio because we rotate along Y axis
 		float pTop = -yRatio * c.frustumTop;
