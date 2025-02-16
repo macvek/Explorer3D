@@ -635,7 +635,7 @@ struct Camera {
 	OrthoRange orthoRange = { -1,-1, 1,1 };
 
 	void applyViewport() {
-		glViewport(viewPos.x, viewPos.y, viewPos.x + viewSize.x, viewPos.y + viewSize.y);
+		glViewport(viewPos.x, viewPos.y, viewSize.x, viewSize.y);
 	}
 
 	void applyProjection() {
@@ -900,13 +900,11 @@ struct DrawPlane : UITrigger {
 	}
 
 	void onSingleView() {
-		camera.viewSize = { (float)(App.windowWidth), (float)(App.windowHeight) };
 		Log.printf("Single View\n");
 		multiViewEnabled = false;
 	}
 
 	void onMultiView() {
-		camera.viewSize = { (float)(App.windowWidth / 2), (float)(App.windowHeight / 2) };
 		Log.printf("Multi View\n");
 		multiViewEnabled = true;
 	}
@@ -1169,9 +1167,8 @@ struct DrawPlane : UITrigger {
 		c.applyProjection();
 
 		glMatrixMode(GL_MODELVIEW);
-		glClearColor(0, 0, 0, 1);
 		glShadeModel(GL_SMOOTH);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glLoadIdentity();
 
 		c.eyeCoords();
 
@@ -1218,13 +1215,34 @@ struct DrawPlane : UITrigger {
 	}
 
 	void frame() {
-		glLoadIdentity();
-
 		++frames;
 		
+		glClearColor(0, 0, 0, 1);
+		glClear(GL_COLOR_BUFFER_BIT);
+
 		applyMoves(camera);
 
-		renderScene(camera);
+		if (multiViewEnabled) {
+			camera.viewSize = { (float)(App.windowWidth / 2), (float)(App.windowHeight / 2) };
+			camera.viewPos = { 0,0 };
+			renderScene(camera);
+			
+			camera.viewPos = { camera.viewSize.x,0 };
+			renderScene(camera);
+			
+			camera.viewPos = { camera.viewSize.x,camera.viewSize.y };
+			renderScene(camera);
+			
+			camera.viewPos = { 0,camera.viewSize.y };
+			renderScene(camera);
+		}
+		else {
+			camera.viewSize = { (float)(App.windowWidth), (float)(App.windowHeight) };
+			camera.viewPos = { 0,0 };
+			renderScene(camera);
+		}
+
+
 		renderOverlay2D();
 
 		SDL_GL_SwapWindow(App.window);
