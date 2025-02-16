@@ -710,6 +710,8 @@ struct DrawPlane : UITrigger {
 	Camera cameraXY;
 	Camera cameraZY;
 
+	Camera cameraAngles;
+
 	vector<pair<Vec3F, Vec3F>> lines;
 	MovementStrategy movement = MoveHybrid;
 	const int fovDiff = 1;
@@ -902,6 +904,12 @@ struct DrawPlane : UITrigger {
 
 		cameraZY = cameraXZ;
 		cameraZY.angle = { 0,-90,0 };
+
+		cameraAngles.perspective = false;
+		cameraAngles.orthoRange = { -1,1,-1,1 };
+		cameraAngles.farPlane = 100;
+		cameraAngles.nearPlane = -100;
+		cameraAngles.viewSize = { 64,64 };
 	}
 
 	void init() {
@@ -1164,8 +1172,6 @@ struct DrawPlane : UITrigger {
 		c.fov = max<float>(min<float>(newFov, fovMax), fovMin);
 	}
 
-	
-
 	void texturedPlane() {
 		// playing with texture 
 		{
@@ -1196,7 +1202,15 @@ struct DrawPlane : UITrigger {
 	}
 
 	void renderAngles(Camera& anglesOf) {
-		glPushMatrix();
+		cameraAngles.viewPos = anglesOf.viewPos;
+		cameraAngles.angle = anglesOf.angle;
+		cameraAngles.applyViewport();
+		cameraAngles.applyProjection();
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+
+		cameraAngles.eyeCoords();
 
 		glBegin(GL_LINES);
 		glColor4f(1, 0, 0, 1);
@@ -1212,7 +1226,6 @@ struct DrawPlane : UITrigger {
 		glVertex3f(0, 0, 1);
 		glEnd();
 
-		glPopMatrix();
 	}
 
 	void renderScene(Camera& c) {
@@ -1244,8 +1257,6 @@ struct DrawPlane : UITrigger {
 			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
 		}
 		glEnd();
-
-		renderAngles(c);
 	}
 
 	void renderOverlay2D() {
@@ -1283,22 +1294,22 @@ struct DrawPlane : UITrigger {
 			camera.viewSize = viewSize;
 			camera.viewPos = { 0,viewSize.y };
 			renderScene(camera);
-			//renderAngles(camera);
+			renderAngles(camera);
 
 			cameraXZ.viewSize = viewSize;
 			cameraXZ.viewPos = { viewSize.x, viewSize.y };
 			renderScene(cameraXZ);
-			//renderAngles(cameraXZ);
+			renderAngles(cameraXZ);
 
 			cameraXY.viewSize = viewSize;
 			cameraXY.viewPos = { 0, 0 };
 			renderScene(cameraXY);
-			//renderAngles(cameraXY);
+			renderAngles(cameraXY);
 
 			cameraZY.viewSize = viewSize;
 			cameraZY.viewPos = { viewSize.x, 0 };
 			renderScene(cameraZY);
-			//renderAngles(cameraZY);
+			renderAngles(cameraZY);
 		}
 		else {
 			camera.viewSize = { (float)(App.windowWidth), (float)(App.windowHeight) };
