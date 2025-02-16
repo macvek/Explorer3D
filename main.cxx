@@ -439,7 +439,6 @@ struct UITrigger {
 	virtual void onAction(int id) = 0;
 };
 
-
 struct UIRect {
 	XYFloat pos;
 	XYFloat textPos;
@@ -603,7 +602,27 @@ enum MainUI_IDs {
 	DISPLAYCOORDS_ID
 };
 
+struct Camera {
+	float frustumRight = 0;
+	float frustumTop = 0;
+	GLdouble fov = 60;
+
+	Vec3F pos = { 0,0,0 };
+	Vec3F angle = { 0,0,0 };
+
+	void reset() {
+		pos = { 0,0,0 };
+		angle = { 0,0,0 };
+		fov = 0;
+	}
+
+	void displayCoords() {
+		Log.printf("[ %.3f %.3f %.3f ], [%.3f %.3f %.3f]\n", pos.x, pos.y, pos.z, angle.x, angle.y, angle.z);
+	}
+};
+
 struct DrawPlane : UITrigger {
+	Camera camera;
 
 	vector<pair<Vec3F, Vec3F>> lines;
 	MovementStrategy movement = MoveHybrid;
@@ -619,14 +638,6 @@ struct DrawPlane : UITrigger {
 
 	GLdouble fov = 60;
 	int frames = 0;
-
-	float posX = 0;
-	float posY = 0;
-	float posZ = 0;
-
-	float aX = 0;
-	float aY = 0;
-	float aZ = 0;
 
 	const float moveSpeed = 0.02;
 
@@ -833,13 +844,7 @@ struct DrawPlane : UITrigger {
 	}
 
 	void onCameraReset() {
-		posX = 0;
-		posY = 0;
-		posZ = 0;
-
-		aX = 0;
-		aY = 0;
-		aZ = 0;
+		camera.reset();
 
 		updateFov(60);
 	}
@@ -880,7 +885,7 @@ struct DrawPlane : UITrigger {
 	}
 
 	void onDisplayCoords() {
-		Log.printf("[ %.3f %.3f %.3f ], [%.3f %.3f %.3f]\n", posX, posY, posZ, aX, aY, aZ);
+		camera.displayCoords();
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
@@ -892,11 +897,11 @@ struct DrawPlane : UITrigger {
 
 		M44 m; m.asRotateX(0);
 
-		M44 mX; mX.asRotateX(rad(aX));
-		M44 mY; mY.asRotateY(rad(aY));
-		M44 mZ; mZ.asRotateZ(rad(aZ));
+		M44 mX; mX.asRotateX(rad(camera.angle.x));
+		M44 mY; mY.asRotateY(rad(camera.angle.y));
+		M44 mZ; mZ.asRotateZ(rad(camera.angle.z));
 
-		M44 mT; mT.asTranslate(posX, posY, posZ);
+		M44 mT; mT.asTranslate(camera.pos.x, camera.pos.y, camera.pos.z);
 
 		m.Mult(mT);
 
@@ -923,17 +928,17 @@ struct DrawPlane : UITrigger {
 		Vec3F v = { moveAlongX * moveSpeed, 0, moveAlongZ * moveSpeed };
 
 		M44 m; m.asRotateX(0);
-		M44 mX;	mX.asRotateX(rad(aX));
-		M44 mY; mY.asRotateY(rad(aY));
+		M44 mX;	mX.asRotateX(rad(camera.angle.x));
+		M44 mY; mY.asRotateY(rad(camera.angle.y));
 
 		m.Mult(mY);
 		m.Mult(mX);
 
 		vRotated = m.ApplyOnPoint(v);
 
-		posX += vRotated.x;
-		posY += moveAlongY * moveSpeed;
-		posZ += vRotated.z;
+		camera.pos.x += vRotated.x;
+		camera.pos.y += moveAlongY * moveSpeed;
+		camera.pos.z += vRotated.z;
 	}
 
 	void applyMovesHybrid() {
@@ -942,23 +947,23 @@ struct DrawPlane : UITrigger {
 
 		M44 m; m.asRotateX(0);
 
-		M44 mX; mX.asRotateX(rad(aX));
-		M44 mY; mY.asRotateY(rad(aY));
-		M44 mZ; mZ.asRotateZ(rad(aZ));
+		M44 mX; mX.asRotateX(rad(camera.angle.x));
+		M44 mY; mY.asRotateY(rad(camera.angle.y));
+		M44 mZ; mZ.asRotateZ(rad(camera.angle.z));
 
 		m.Mult(mY);
 		m.Mult(mX);
 		m.Mult(mZ);
 
 		vRotated = m.ApplyOnPoint(v);
-		posX += vRotated.x;
-		posY += vRotated.y;
-		posZ += vRotated.z;
+		camera.pos.x += vRotated.x;
+		camera.pos.y += vRotated.y;
+		camera.pos.z += vRotated.z;
 	}
 
 	void applyMoves() {
 		if (rotateZ) {
-			aZ += 0.8 * rotateZ;
+			camera.angle.z += 0.8 * rotateZ;
 		}
 
 		if (moveAlongX == 0 && moveAlongZ == 0 && moveAlongY == 0) {
@@ -975,11 +980,11 @@ struct DrawPlane : UITrigger {
 
 	void pointerUpdateHybridXYZ(float dX, float dY) {
 		// sic! - moving left-right (pointer X) rotates around axis Y, and pointer Y around axis X
-		aY += App.pointerSpeed * -dX;
-		aX += App.pointerSpeed * -dY;
+		camera.angle.y += App.pointerSpeed * -dX;
+		camera.angle.x += App.pointerSpeed * -dY;
 
-		if (aX < -90) aX = -90;
-		if (aX > 90) aX = 90;
+		if (camera.angle.x < -90) camera.angle.x = -90;
+		if (camera.angle.x > 90) camera.angle.x = 90;
 	}
 
 	void pointerUpdateFreespace(float dX, float dY) {
@@ -987,9 +992,9 @@ struct DrawPlane : UITrigger {
 		float oX = App.pointerSpeed * -dY;
 
 		// apply current rotations
-		M44 mX; mX.asRotateX(rad(aX));
-		M44 mY; mY.asRotateY(rad(aY));
-		M44 mZ; mZ.asRotateZ(rad(aZ));
+		M44 mX; mX.asRotateX(rad(camera.angle.x));
+		M44 mY; mY.asRotateY(rad(camera.angle.y));
+		M44 mZ; mZ.asRotateZ(rad(camera.angle.z));
 
 		M44 mOY; mOY.asRotateY(rad(oY));
 		M44 mOX; mOX.asRotateX(rad(oX));
@@ -1022,11 +1027,11 @@ struct DrawPlane : UITrigger {
 
 		float radX = atan2(rotatedX.y, -rotatedX.z);
 
-		aX = deg(radX);
-		aY = deg(radY);
+		camera.angle.x = deg(radX);
+		camera.angle.y = deg(radY);
 
-		M44 mX; mX.asRotateX(rad(-aX));
-		M44 mY; mY.asRotateY(rad(-aY));
+		M44 mX; mX.asRotateX(rad(-camera.angle.x));
+		M44 mY; mY.asRotateY(rad(-camera.angle.y));
 
 		M44 m; m.asRotateX(0);
 
@@ -1036,7 +1041,7 @@ struct DrawPlane : UITrigger {
 		Vec3F revUp = m.ApplyOnPoint(up);
 
 		float radZ = atan2(-revUp.x, revUp.y);
-		aZ = deg(radZ);
+		camera.angle.z = deg(radZ);
 	}
 
 	void pointerUpdate(float dX, float dY) {
@@ -1105,9 +1110,9 @@ struct DrawPlane : UITrigger {
 	}
 
 	void eyeCoords() const {
-		glRotatef(-aZ, 0, 0, 1);
-		glRotatef(-aX, 1, 0, 0);
-		glRotatef(-aY, 0, 1, 0);
+		glRotatef(-camera.angle.z, 0, 0, 1);
+		glRotatef(-camera.angle.x, 1, 0, 0);
+		glRotatef(-camera.angle.y, 0, 1, 0);
 	}
 
 	void texturedPlane() {
@@ -1179,7 +1184,7 @@ struct DrawPlane : UITrigger {
 
 		eyeCoords();
 
-		glTranslatef(-posX, -posY, -posZ);
+		glTranslatef(-camera.pos.x, -camera.pos.y, -camera.pos.z);
 
 		glColor3f(0.3, 0.3, 0.3);
 		drawGrid(0);
@@ -1383,7 +1388,7 @@ int main(int argc, char** argv) {
 				}
 				else if (keyEvent->key == SDLK_9) {
 					d.movement = MoveXYZ;
-					d.aZ = 0;
+					d.camera.angle.z = 0;
 					Log.printf("Movement: xyz\n");
 				}
 				else if (keyEvent->key == SDLK_0) {
