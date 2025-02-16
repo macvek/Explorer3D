@@ -892,10 +892,16 @@ struct DrawPlane : UITrigger {
 	void setupXYZCameras() {
 		cameraXZ.perspective = false;
 		cameraXZ.adjustOrtho = true;
-		cameraXZ.orthoRange = { -10,10,-10,10 };
+		cameraXZ.orthoRange = { -5,5,-5,5 };
 		cameraXZ.farPlane = 100;
 		cameraXZ.nearPlane = -100;
 		cameraXZ.angle = { -90,0,0 };
+
+		cameraXY = cameraXZ;
+		cameraXY.angle = { 0,0,0 };
+
+		cameraZY = cameraXZ;
+		cameraZY.angle = { 0,-90,0 };
 	}
 
 	void init() {
@@ -1259,7 +1265,14 @@ struct DrawPlane : UITrigger {
 			cameraXZ.viewSize = viewSize;
 			cameraXZ.viewPos = { viewSize.x, viewSize.y };
 			renderScene(cameraXZ);
-			
+
+			cameraXY.viewSize = viewSize;
+			cameraXY.viewPos = { 0, 0 };
+			renderScene(cameraXY);
+
+			cameraZY.viewSize = viewSize;
+			cameraZY.viewPos = { viewSize.x, 0 };
+			renderScene(cameraZY);
 		}
 		else {
 			camera.viewSize = { (float)(App.windowWidth), (float)(App.windowHeight) };
