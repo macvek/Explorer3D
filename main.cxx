@@ -610,11 +610,18 @@ enum MainUI_IDs {
 	DISPLAYCOORDS_ID
 };
 
+struct OrthoRange {
+	float left;
+	float right;
+	float bottom;
+	float top;
+};
+
 struct Camera {
-	const float nearPlane = 0.1;
-	const float farPlane = 10;
+	float nearPlane = 0.1;
+	float farPlane = 10;
 	
-	bool perspetive = true;
+	bool perspective = true;
 	float frustumRight = 0;
 	float frustumTop = 0;
 	GLdouble fov = 60;
@@ -625,6 +632,8 @@ struct Camera {
 	XYFloat viewPos = { 0,0 };
 	XYFloat viewSize = { 0,0 };
 
+	OrthoRange orthoRange = { -1,-1, 1,1 };
+
 	void applyViewport() {
 		glViewport(viewPos.x, viewPos.y, viewPos.x + viewSize.x, viewPos.y + viewSize.y);
 	}
@@ -633,7 +642,7 @@ struct Camera {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 
-		if (perspetive) {
+		if (perspective) {
 
 			GLdouble right;
 			GLdouble top;
@@ -657,7 +666,7 @@ struct Camera {
 			frustumTop = top;
 		}
 		else {
-			glOrtho(-1, 1, -1, 1, nearPlane, farPlane);
+			glOrtho(orthoRange.left, orthoRange.right, orthoRange.bottom, orthoRange.top, nearPlane, farPlane);
 		}
 	}
 
@@ -682,6 +691,7 @@ struct Camera {
 
 struct DrawPlane : UITrigger {
 	Camera camera;
+	Camera consoleView;
 
 	vector<pair<Vec3F, Vec3F>> lines;
 	MovementStrategy movement = MoveHybrid;
@@ -856,15 +866,24 @@ struct DrawPlane : UITrigger {
 		TextPainter.fontCharWidth = 9;
 	}
 
+	void setupConsoleView() {
+		consoleView.farPlane = -1;
+		consoleView.nearPlane = 1;
+		consoleView.perspective = false;
+	}
+
 	void init() {
 		loadFontTexture();
+		setupConsoleView();
 		setupUI();
-
 		onResize();
 	}
 
 	void onResize() {
 		camera.viewSize = { (float)App.windowWidth, (float)App.windowHeight };
+		
+		consoleView.viewSize = { (float)App.windowWidth, (float)App.windowHeight };
+		consoleView.orthoRange = { 0, consoleView.viewSize.x, consoleView.viewSize.y, 0 };
 	}
 
 	void onAction(int uiId) {
@@ -1145,30 +1164,6 @@ struct DrawPlane : UITrigger {
 		}
 	}
 
-	// x=0;y=0 => top left corner
-	void enterPixelToPixel2D(float w, float h) {
-		glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-		glLoadIdentity();
-		glOrtho(0, w, h, 0, -1, 1);
-
-		glMatrixMode(GL_MODELVIEW);
-
-		glPushAttrib(GL_ENABLE_BIT);
-		glEnable(GL_BLEND);
-		glEnable(GL_TEXTURE_2D);
-
-		glLoadIdentity();
-	}
-
-	void leavePixelToPixel2D() {
-		glPopAttrib();
-
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
-	}
-
 	void renderScene(Camera& c) {
 		c.applyViewport();
 		c.applyProjection();
@@ -1201,6 +1196,27 @@ struct DrawPlane : UITrigger {
 		glEnd();
 	}
 
+	void renderOverlay2D() {
+		consoleView.applyViewport();
+		consoleView.applyProjection();
+
+		glMatrixMode(GL_MODELVIEW);
+		glPushAttrib(GL_ENABLE_BIT);
+		glEnable(GL_BLEND);
+		glEnable(GL_TEXTURE_2D);
+
+		if (!App.mouseCaptureMode) {
+			glLoadIdentity();
+			mainUI.render();
+		}
+
+		if (Log.unreadMessages > 0) {
+			glLoadIdentity();
+			showMessages();
+		}
+		glPopAttrib();
+	}
+
 	void frame() {
 		glLoadIdentity();
 
@@ -1209,19 +1225,7 @@ struct DrawPlane : UITrigger {
 		applyMoves(camera);
 
 		renderScene(camera);
-
-
-		if (!App.mouseCaptureMode)  {
-			enterPixelToPixel2D(App.windowWidth, App.windowHeight);
-			mainUI.render();
-			leavePixelToPixel2D();
-		}
-		
-		if (Log.unreadMessages > 0) {
-			enterPixelToPixel2D(App.windowWidth, App.windowHeight);
-			showMessages();
-			leavePixelToPixel2D();
-		}
+		renderOverlay2D();
 
 		SDL_GL_SwapWindow(App.window);
 	}
