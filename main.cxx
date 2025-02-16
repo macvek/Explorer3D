@@ -643,6 +643,7 @@ struct DrawPlane : UITrigger {
 	int endOfMessageFrame = 0;
 
 	XYFloat cameraViewSize;
+	bool multiViewEnabled = false;
 
 	void showMessages() {
 		if (endOfMessageFrame == 0 && Log.unreadMessages > 0) {
@@ -821,10 +822,14 @@ struct DrawPlane : UITrigger {
 
 	void onSingleView() {
 		Log.printf("Single View\n");
+		multiViewEnabled = false;
+		refreshDrawDimentions = true;
 	}
 
 	void onMultiView() {
 		Log.printf("Multi View\n");
+		multiViewEnabled = true;
+		refreshDrawDimentions = true;
 	}
 
 	void onCameraReset() {
@@ -1044,13 +1049,11 @@ struct DrawPlane : UITrigger {
 	}
 
 	void cursorUpdate(float x, float y) {
-		XYFloat cursor = { x,y };
-		mainUI.cursorAt(cursor);
+		mainUI.cursorAt({ x,y });
 	}
 
 	void cursorButton(float x, float y, int idx, bool down) {
-		XYFloat cursor = { x,y };
-		mainUI.buttonAt(cursor, idx, down);
+		mainUI.buttonAt({ x,y }, idx, down);
 	}
 
 	void updateFov(float newFov) {
@@ -1203,8 +1206,15 @@ struct DrawPlane : UITrigger {
 		glLoadIdentity();
 
 		++frames;
-		
-		drawCameraView();
+		if (multiViewEnabled) {
+			glViewport(0, 0, cameraViewSize.x/2, cameraViewSize.y/2);
+			drawCameraView();
+			glViewport(0, 0, App.windowWidth, App.windowHeight);
+		}
+		else {
+			drawCameraView();
+		}
+
 
 		if (!App.mouseCaptureMode)  {
 			enterPixelToPixel2D(App.windowWidth, App.windowHeight);
