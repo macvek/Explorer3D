@@ -55,10 +55,12 @@ struct MessageLog {
 	}
 } Log;
 
-struct XYFloat {
-	float x = 0;
-	float y = 0;
+template <typename T> struct XYGeneric {
+	T x = 0;
+	T y = 0;
 };
+
+using XYFloat = XYGeneric<float>;
 
 struct UIRGB {
 	unsigned char r = 0;
@@ -640,7 +642,7 @@ struct DrawPlane : UITrigger {
 	const int framesForMessage = 120;
 	int endOfMessageFrame = 0;
 
-	
+	XYFloat cameraViewSize;
 
 	void showMessages() {
 		if (endOfMessageFrame == 0 && Log.unreadMessages > 0) {
@@ -877,8 +879,8 @@ struct DrawPlane : UITrigger {
 	}
 
 	pair<Vec3F, Vec3F> traceLine(float x, float y) {
-		float xRatio = x / App.windowWidth * 2 - 1;
-		float yRatio = y / App.windowHeight * 2 - 1;
+		float xRatio = x / cameraViewSize.x * 2 - 1;
+		float yRatio = y / cameraViewSize.y * 2 - 1;
 
 		float pRight = xRatio * frustumRight; // minus xRatio because we rotate along Y axis
 		float pTop = -yRatio * frustumTop;
@@ -1135,11 +1137,11 @@ struct DrawPlane : UITrigger {
 	}
 
 	// x=0;y=0 => top left corner
-	void enterPixelToPixel2D() {
+	void enterPixelToPixel2D(float w, float h) {
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
 		glLoadIdentity();
-		glOrtho(0, App.windowWidth, App.windowHeight, 0, -1, 1);
+		glOrtho(0, w, h, 0, -1, 1);
 
 		glMatrixMode(GL_MODELVIEW);
 
@@ -1163,8 +1165,10 @@ struct DrawPlane : UITrigger {
 
 		if (refreshDrawDimentions) {
 			refreshDrawDimentions = false;
-			glViewport(0, 0, App.windowWidth, App.windowHeight);
-			updateProjection(App.windowWidth, App.windowHeight);
+			cameraViewSize = { (float)App.windowWidth, (float)App.windowHeight };
+
+			glViewport(0, 0, cameraViewSize.x, cameraViewSize.y);
+			updateProjection(cameraViewSize.x, cameraViewSize.y);
 		}
 		glClearColor(0, 0, 0, 1);
 		glShadeModel(GL_SMOOTH);
@@ -1203,13 +1207,13 @@ struct DrawPlane : UITrigger {
 		drawCameraView();
 
 		if (!App.mouseCaptureMode)  {
-			enterPixelToPixel2D();
+			enterPixelToPixel2D(App.windowWidth, App.windowHeight);
 			mainUI.render();
 			leavePixelToPixel2D();
 		}
 		
 		if (Log.unreadMessages > 0) {
-			enterPixelToPixel2D();
+			enterPixelToPixel2D(App.windowWidth, App.windowHeight);
 			showMessages();
 			leavePixelToPixel2D();
 		}
