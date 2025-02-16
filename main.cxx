@@ -1195,6 +1195,26 @@ struct DrawPlane : UITrigger {
 		}
 	}
 
+	void renderAngles(Camera& anglesOf) {
+		glPushMatrix();
+
+		glBegin(GL_LINES);
+		glColor4f(1, 0, 0, 1);
+		glVertex3f(0, 0, 0);
+		glVertex3f(1, 0, 0);
+
+		glColor4f(0, 1, 0, 1);
+		glVertex3f(0, 0, 0);
+		glVertex3f(0, 1, 0);
+
+		glColor4f(0, 0, 1, 1);
+		glVertex3f(0, 0, 0);
+		glVertex3f(0, 0, 1);
+		glEnd();
+
+		glPopMatrix();
+	}
+
 	void renderScene(Camera& c) {
 		c.applyViewport();
 		c.applyProjection();
@@ -1224,6 +1244,8 @@ struct DrawPlane : UITrigger {
 			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
 		}
 		glEnd();
+
+		renderAngles(c);
 	}
 
 	void renderOverlay2D() {
@@ -1261,18 +1283,22 @@ struct DrawPlane : UITrigger {
 			camera.viewSize = viewSize;
 			camera.viewPos = { 0,viewSize.y };
 			renderScene(camera);
-			
+			//renderAngles(camera);
+
 			cameraXZ.viewSize = viewSize;
 			cameraXZ.viewPos = { viewSize.x, viewSize.y };
 			renderScene(cameraXZ);
+			//renderAngles(cameraXZ);
 
 			cameraXY.viewSize = viewSize;
 			cameraXY.viewPos = { 0, 0 };
 			renderScene(cameraXY);
+			//renderAngles(cameraXY);
 
 			cameraZY.viewSize = viewSize;
 			cameraZY.viewPos = { viewSize.x, 0 };
 			renderScene(cameraZY);
+			//renderAngles(cameraZY);
 		}
 		else {
 			camera.viewSize = { (float)(App.windowWidth), (float)(App.windowHeight) };
