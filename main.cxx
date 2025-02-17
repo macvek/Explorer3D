@@ -652,7 +652,6 @@ struct Camera {
 		XYFloat unit = pixelRange();
 		Vec3F posDiff = { -dx * unit.x, -dy * unit.y,0 };
 
-		Log.printf("unit={%f,%f; %f,%f,%f,%f}\n", unit.x, unit.y, orthoRange.left, orthoRange.right, orthoRange.top, orthoRange.bottom);
 		pos.x += posDiff.x;
 		pos.y += posDiff.y;
 		pos.z += posDiff.z;
@@ -660,9 +659,10 @@ struct Camera {
 	}
 
 	XYFloat pixelRange() const {
+		ClippingRange r = calculateClippingRange();
 		return {
-			(orthoRange.right - orthoRange.left) / viewSize.x,
-			(orthoRange.bottom - orthoRange.top) / viewSize.y,
+			(r.right - r.left) / viewSize.x,
+			(r.bottom - r.top) / viewSize.y,
 		};
 	}
 
