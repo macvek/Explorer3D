@@ -619,7 +619,7 @@ enum AllViews {
 	VIEW_ZY,
 };
 
-struct OrthoRange {
+struct ClippingRange {
 	float left;
 	float right;
 	float bottom;
@@ -642,53 +642,86 @@ struct Camera {
 	XYFloat viewPos = { 0,0 };
 	XYFloat viewSize = { 0,0 };
 
-	OrthoRange orthoRange = { -1,-1, 1,1 };
+	ClippingRange orthoRange = { -1, 1, -1,1 };
+	
+	void applyCameraDrag(float dx, float dy) {
+		if (perspective) {
+			return;
+		}
+
+		XYFloat unit = pixelRange();
+		Vec3F posDiff = { -dx * unit.x, -dy * unit.y,0 };
+
+		Log.printf("unit={%f,%f; %f,%f,%f,%f}\n", unit.x, unit.y, orthoRange.left, orthoRange.right, orthoRange.top, orthoRange.bottom);
+		pos.x += posDiff.x;
+		pos.y += posDiff.y;
+		pos.z += posDiff.z;
+
+	}
+
+	XYFloat pixelRange() const {
+		return {
+			(orthoRange.right - orthoRange.left) / viewSize.x,
+			(orthoRange.bottom - orthoRange.top) / viewSize.y,
+		};
+	}
 
 	void applyViewport() {
 		glViewport(viewPos.x, viewPos.y, viewSize.x, viewSize.y);
 	}
 
-	void applyProjection() {
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
+	ClippingRange calculateClippingRange() const {
+		if (!perspective && !adjustOrtho) {
+			return orthoRange;
+		}
 
-		GLdouble right;
-		GLdouble top;
+		ClippingRange c;
 		GLdouble aspectRatio;
 		aspectRatio = (1.0 * viewSize.x) / viewSize.y;
 
 		if (perspective) {
 			GLdouble tangent = tan(rad(fov / 2));
 
-			top = tangent * nearPlane;
-			right = top;
+			c.top = tangent * nearPlane;
+			c.right = c.top;
 			if (viewSize.x > viewSize.y) {
-				right *= aspectRatio;
+				c.right *= aspectRatio;
 			}
 			else {
-				top /= aspectRatio;
+				c.top /= aspectRatio;
 			}
-
-			glFrustum(-right, right, -top, top, nearPlane, farPlane);
-			frustumRight = right;
-			frustumTop = top;
 		}
 		else {
-			if (adjustOrtho) {
-				if (viewSize.x > viewSize.y) {
-					right = orthoRange.right;
-					top = orthoRange.top / aspectRatio;
-				}
-				else {
-					right = orthoRange.right * aspectRatio;
-					top = orthoRange.top;
-				}
-
-				glOrtho(-right, right, -top, top, nearPlane, farPlane);
+			if (viewSize.x > viewSize.y) {
+				c.right = orthoRange.right;
+				c.top = orthoRange.top / aspectRatio;
 			}
 			else {
-				glOrtho(orthoRange.left, orthoRange.right, orthoRange.bottom, orthoRange.top, nearPlane, farPlane);
+				c.right = orthoRange.right * aspectRatio;
+				c.top = orthoRange.top;
 			}
+		}
+
+		c.left = -c.right;
+		c.bottom = -c.top;
+
+		return c;
+
+	}
+
+	void applyProjection() {
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+
+		ClippingRange c = calculateClippingRange();
+
+		if (perspective) {
+			glFrustum(c.left, c.right, c.bottom, c.top, nearPlane, farPlane);
+			frustumRight = c.right;
+			frustumTop = c.top;
+		}
+		else {
+			glOrtho(c.left, c.right, c.bottom, c.top, nearPlane, farPlane);
 		}
 	}
 
@@ -744,6 +777,9 @@ struct DrawPlane : UITrigger {
 	int endOfMessageFrame = 0;
 
 	bool multiViewEnabled = false;
+
+	XYFloat dragXY;
+	bool dragging = false;
 
 	void showMessages() {
 		if (endOfMessageFrame == 0 && Log.unreadMessages > 0) {
@@ -1178,32 +1214,29 @@ struct DrawPlane : UITrigger {
 		}
 	}
 
-	void cursorUpdate(float x, float y) {
+	void cursorUpdate(float x, float y, float dx, float dy) {
 		mainUI.cursorAt({ x,y });
-		if (multiViewEnabled) {
-			bool left = x < App.windowWidth / 2;
-			bool top = y < App.windowHeight / 2;
+		if (multiViewEnabled && dragging) {
+			cameraXY.applyCameraDrag(dx, dy);
+		}
+	}
 
-			focusView = VIEW_NONE;
-			
-			if (left && top) {
-				focusView = VIEW_CAMERA;
-			}
-			else if (left && !top) {
-				focusView = VIEW_ZY;
-			}
-			else if (!left && top) {
-				focusView = VIEW_XZ;
-			}
-			else if (!left && !top) {
+	void handleDragging(XYFloat xy, bool down) {
+		if (!dragging && down || dragging && !down) {
+			dragging = !dragging;
+			dragXY = xy;
 
-			}
+			// TODO: change cursor icon
+			Log.printf("Dragging %i at {%f,%f}\n", dragging, dragXY.x, dragXY.y);
 		}
 	}
 
 	void cursorButton(XYFloat xy, int idx, bool down) {
 		mainUI.buttonAt(xy, idx, down);
 		
+		if (SDL_BUTTON_MIDDLE == idx) {
+			handleDragging(xy, down);
+		}
 	}
 
 	void updateFov(Camera &c, float newFov) {
@@ -1448,7 +1481,7 @@ int main(int argc, char** argv) {
 					d.pointerUpdate(d.camera, mouseEvent->xrel, mouseEvent->yrel);
 				}
 				else {
-					d.cursorUpdate(mouseEvent->x, mouseEvent->y);
+					d.cursorUpdate(mouseEvent->x, mouseEvent->y, mouseEvent->xrel, mouseEvent->yrel);
 				}
 			}
 			else if (event.type == SDL_EVENT_KEY_DOWN) {
