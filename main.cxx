@@ -120,9 +120,6 @@ struct {
 	}
 } UIPreface;
 
-
-
-
 struct Vec3F {
 	float x, y, z;
 
@@ -627,6 +624,9 @@ struct ClippingRange {
 };
 
 struct Camera {
+	static const float fovMax;
+	static const float fovMin;
+
 	float nearPlane = 0.1;
 	float farPlane = 10;
 	
@@ -643,7 +643,17 @@ struct Camera {
 	XYFloat viewSize = { 0,0 };
 
 	ClippingRange orthoRange = { -1, 1, -1,1 };
+	float zoomFactor = 1;
 	
+	void applyCameraWheel(float dy) {
+		if (perspective) {
+			updateFov(fov -dy);
+		}
+		else if (adjustOrtho) {
+			zoomFactor -= 0.02 * dy;
+		}
+	}
+
 	void applyCameraDrag(float dx, float dy) {
 		if (perspective) {
 			return;
@@ -664,6 +674,10 @@ struct Camera {
 		pos.y += posDiff.y;
 		pos.z += posDiff.z;
 
+	}
+
+	void updateFov(float newFov) {
+		fov = max<float>(min<float>(newFov, fovMax), fovMin);
 	}
 
 	XYFloat pixelRange() const {
@@ -708,6 +722,9 @@ struct Camera {
 				c.right = orthoRange.right * aspectRatio;
 				c.top = orthoRange.top;
 			}
+
+			c.right *= zoomFactor;
+			c.top *= zoomFactor;
 		}
 
 		c.left = -c.right;
@@ -752,6 +769,9 @@ struct Camera {
 	}
 };
 
+const float Camera::fovMax = 175;
+const float Camera::fovMin = 5;
+
 struct DrawPlane : UITrigger {
 	Camera camera;
 	Camera consoleView;
@@ -767,8 +787,6 @@ struct DrawPlane : UITrigger {
 	vector<pair<Vec3F, Vec3F>> lines;
 	MovementStrategy movement = MoveHybrid;
 	const int fovDiff = 1;
-	const float fovMax = 160;
-	const float fovMin = 5;
 
 	int frames = 0;
 
@@ -1010,7 +1028,7 @@ struct DrawPlane : UITrigger {
 	void onCameraReset() {
 		camera.reset();
 
-		updateFov(camera, 60);
+		camera.updateFov(60);
 	}
 	
 	void addManyButtons(const vector<string> &names, int startingId, XYFloat startingPos, vector<UIRect> &buttonsSink) {
@@ -1265,8 +1283,8 @@ struct DrawPlane : UITrigger {
 		}
 	}
 
-	void updateFov(Camera &c, float newFov) {
-		c.fov = max<float>(min<float>(newFov, fovMax), fovMin);
+	void cursorWheel(float dy, XYFloat xy) {
+		cameraAtXY(xy).applyCameraWheel(dy);
 	}
 
 	void texturedPlane() {
@@ -1495,6 +1513,10 @@ int main(int argc, char** argv) {
 					d.cursorButton({ mouseEvent->x, mouseEvent->y }, mouseEvent->button, true);
 				}
 			}
+			else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+				SDL_MouseWheelEvent* mouseEvent = (SDL_MouseWheelEvent*)&event;
+				d.cursorWheel(mouseEvent->y, { mouseEvent->mouse_x, mouseEvent->mouse_y});
+			}
 			else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
 				SDL_WindowEvent* windowEvent = (SDL_WindowEvent*)&event;
 				App.windowWidth = windowEvent->data1;
@@ -1545,11 +1567,11 @@ int main(int argc, char** argv) {
 					Log.printf("CONSOLE\n");
 				}
 				else if (keyEvent->key == SDLK_KP_PLUS) {
-					d.updateFov(d.camera, d.camera.fov + d.fovDiff);
+					d.camera.updateFov(d.camera.fov + d.fovDiff);
 					Log.printf("FOV: %f\n", d.camera.fov);
 				}
 				else if (keyEvent->key == SDLK_KP_MINUS) {
-					d.updateFov(d.camera, d.camera.fov - d.fovDiff);
+					d.camera.updateFov(d.camera.fov - d.fovDiff);
 					Log.printf("FOV: %f\n", d.camera.fov);
 				}
 				else if (keyEvent->key == SDLK_A || keyEvent->key == SDLK_D) {
