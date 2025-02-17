@@ -607,7 +607,16 @@ enum MainUI_IDs {
 	SINGLEVIEW_ID = 100,
 	MULTIVIEW_ID,
 	CAMERARESET_ID,
-	DISPLAYCOORDS_ID
+	DISPLAYCOORDS_ID,
+	CHANGE_CURSOR_ID,
+};
+
+enum AllViews {
+	VIEW_NONE,
+	VIEW_CAMERA,
+	VIEW_XZ,
+	VIEW_XY,
+	VIEW_ZY,
 };
 
 struct OrthoRange {
@@ -711,6 +720,8 @@ struct DrawPlane : UITrigger {
 	Camera cameraZY;
 
 	Camera cameraAngles;
+
+	AllViews focusView;
 
 	vector<pair<Vec3F, Vec3F>> lines;
 	MovementStrategy movement = MoveHybrid;
@@ -935,6 +946,7 @@ struct DrawPlane : UITrigger {
 		case MULTIVIEW_ID: onMultiView(); break;
 		case CAMERARESET_ID: onCameraReset(); break;
 		case DISPLAYCOORDS_ID: onDisplayCoords(); break;
+		case CHANGE_CURSOR_ID: onChangeCursor(); break;
 		default:
 			Log.printf("Unsupported event id %i\n", uiId); break;
 		}
@@ -987,12 +999,17 @@ struct DrawPlane : UITrigger {
 		mainUI.x = 100;
 		mainUI.y = 100;
 
-		vector<string> names = { "Single View", "Multi View", "Reset camera", "Display coords"};
+		vector<string> names = { "Single View", "Multi View", "Reset camera", "Display coords", "Change cursor"};
 		addManyButtons(names, SINGLEVIEW_ID, { 0,0 }, mainUI.parts);
 	}
 
 	void onDisplayCoords() {
 		camera.displayCoords();
+	}
+	
+	void onChangeCursor() {
+		auto click = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
+		SDL_SetCursor(click);
 	}
 
 	pair<Vec3F, Vec3F> traceLine(const Camera& c, const float x, const float y) {
@@ -1163,10 +1180,30 @@ struct DrawPlane : UITrigger {
 
 	void cursorUpdate(float x, float y) {
 		mainUI.cursorAt({ x,y });
+		if (multiViewEnabled) {
+			bool left = x < App.windowWidth / 2;
+			bool top = y < App.windowHeight / 2;
+
+			focusView = VIEW_NONE;
+			
+			if (left && top) {
+				focusView = VIEW_CAMERA;
+			}
+			else if (left && !top) {
+				focusView = VIEW_ZY;
+			}
+			else if (!left && top) {
+				focusView = VIEW_XZ;
+			}
+			else if (!left && !top) {
+
+			}
+		}
 	}
 
-	void cursorButton(float x, float y, int idx, bool down) {
-		mainUI.buttonAt({ x,y }, idx, down);
+	void cursorButton(XYFloat xy, int idx, bool down) {
+		mainUI.buttonAt(xy, idx, down);
+		
 	}
 
 	void updateFov(Camera &c, float newFov) {
@@ -1384,10 +1421,10 @@ int main(int argc, char** argv) {
 		if (SDL_PollEvent(&event)) {
 			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
-				if (mouseEvent->button == SDL_BUTTON_LEFT && !App.mouseCaptureMode) {
-					d.lines.push_back(d.traceLine(d.camera, mouseEvent->x, mouseEvent->y));
-					XYFloat cursor = { mouseEvent->x, mouseEvent->y };
-					d.mainUI.buttonAt(cursor, SDL_BUTTON_LEFT, false);
+				if ((mouseEvent->button == SDL_BUTTON_LEFT || mouseEvent->button == SDL_BUTTON_MIDDLE) && !App.mouseCaptureMode) {
+					//d.lines.push_back(d.traceLine(d.camera, mouseEvent->x, mouseEvent->y));
+					d.cursorButton({ mouseEvent->x, mouseEvent->y }, mouseEvent->button, false);
+
 				}
 				if (mouseEvent->button == SDL_BUTTON_RIGHT) {
 					App.mouseCapture(!App.mouseCaptureMode);
@@ -1395,9 +1432,8 @@ int main(int argc, char** argv) {
 			}
 			else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
-				if (mouseEvent->button == SDL_BUTTON_LEFT && !App.mouseCaptureMode) {
-					XYFloat cursor = { mouseEvent->x, mouseEvent->y };
-					d.mainUI.buttonAt(cursor, SDL_BUTTON_LEFT, true);
+				if ( (mouseEvent->button == SDL_BUTTON_LEFT || mouseEvent->button == SDL_BUTTON_MIDDLE) && !App.mouseCaptureMode) {
+					d.cursorButton({ mouseEvent->x, mouseEvent->y }, mouseEvent->button, true);
 				}
 			}
 			else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
