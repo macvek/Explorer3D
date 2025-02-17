@@ -650,7 +650,15 @@ struct Camera {
 		}
 
 		XYFloat unit = pixelRange();
-		Vec3F posDiff = { -dx * unit.x, -dy * unit.y,0 };
+		Vec3F posDiff = { -dx * unit.x, -dy * unit.y, 0 };
+
+		M44 mX; mX.asRotateX(rad(angle.x));
+		M44 mY; mY.asRotateY(rad(angle.y));
+		M44 mZ; mZ.asRotateZ(rad(angle.z));
+
+		posDiff = mX.ApplyOnPoint(posDiff);
+		posDiff = mY.ApplyOnPoint(posDiff);
+		posDiff = mZ.ApplyOnPoint(posDiff);
 
 		pos.x += posDiff.x;
 		pos.y += posDiff.y;
@@ -780,6 +788,7 @@ struct DrawPlane : UITrigger {
 
 	XYFloat dragXY;
 	bool dragging = false;
+	
 
 	void showMessages() {
 		if (endOfMessageFrame == 0 && Log.unreadMessages > 0) {
@@ -1217,7 +1226,24 @@ struct DrawPlane : UITrigger {
 	void cursorUpdate(float x, float y, float dx, float dy) {
 		mainUI.cursorAt({ x,y });
 		if (multiViewEnabled && dragging) {
-			cameraXY.applyCameraDrag(dx, dy);
+			cameraAtXY(dragXY).applyCameraDrag(dx, dy);
+		}
+	}
+
+	Camera& cameraAtXY(XYFloat xy) {
+		if (multiViewEnabled) {
+			bool left = xy.x < App.windowWidth / 2;
+			bool top = xy.y < App.windowHeight / 2;
+
+			if (left) {
+				return top ? camera : cameraXY;
+			}
+			else {
+				return top ? cameraXZ : cameraZY;
+			}
+		}
+		else {
+			return camera;
 		}
 	}
 
