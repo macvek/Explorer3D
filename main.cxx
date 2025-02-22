@@ -238,6 +238,9 @@ struct AppContext {
 	string lastError;
 	OpenGLProperties openglProperties;
 
+	SDL_Cursor* cursorDefault;
+	SDL_Cursor* cursorPointer;
+
 	bool mouseCaptureMode;
 
 	bool startSDL();
@@ -251,6 +254,8 @@ struct AppContext {
 
 		mouseCaptureMode = newState;
 	}
+
+
 } App;
 
 bool AppContext::startSDL() {
@@ -282,6 +287,9 @@ bool AppContext::startSDL() {
 	SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &openglProperties.major);
 	SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &openglProperties.minor);
 
+	cursorDefault = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+	cursorPointer = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+	
 	return true;
 }
 
@@ -1071,8 +1079,7 @@ struct DrawPlane : UITrigger {
 	}
 	
 	void onChangeCursor() {
-		auto click = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
-		SDL_SetCursor(click);
+		SDL_SetCursor(App.cursorPointer);
 	}
 
 	pair<Vec3F, Vec3F> traceLine(const Camera& c, const float x, const float y) {
@@ -1270,7 +1277,7 @@ struct DrawPlane : UITrigger {
 			dragging = !dragging;
 			dragXY = xy;
 
-			// TODO: change cursor icon
+			SDL_SetCursor(dragging ? App.cursorPointer : App.cursorDefault);
 			Log.printf("Dragging %i at {%f,%f}\n", dragging, dragXY.x, dragXY.y);
 		}
 	}
