@@ -13,55 +13,13 @@
 
 #include <cmath>
 
-#define M_PI       3.14159265358979323846
+
+#include <log.h>
+#include <trig.h>
+#include <m44.h>
 
 using namespace std;
 
-double rad(double deg) {
-	return M_PI / 180 * deg;
-}
-
-double deg(double rad) {
-	return 180 / M_PI * rad;
-}
-
-struct MessageLog {
-	list<string> history;
-	char buffer[120] = {};
-	int unreadMessages = 0;
-
-	void printf(const char* format, ...) {
-		va_list args;
-		va_start(args, format);
-		vsprintf_s(buffer, format, args);
-		va_end(args);
-
-		cout << buffer;
-
-		char* start = buffer;
-		char* ptr = buffer;
-
-		for (;;) {
-			char here = *ptr;
-			if (here == '\n' || (here == 0 && ptr-start>1) ) {
-				*ptr = 0;
-				history.push_back(start);
-				++unreadMessages;
-				start = ptr + 1;
-			}
-
-			if (here == 0) {
-				break;
-			}
-			else {
-				++ptr;
-			}
-		}
-
-		unreadMessages = min(10, unreadMessages);
-
-	}
-} Log;
 
 template <typename T> struct XYGeneric {
 	T x = 0;
@@ -119,91 +77,6 @@ struct {
 		colorsHover.textColor = darkerTextColor;
 	}
 } UIPreface;
-
-struct Vec3F {
-	float x, y, z;
-
-	void Print() {
-		Log.printf("[ %f\t%f\t%f ]\n", x, y, z);
-	}
-
-	void normalize() {
-		float l = len();
-		x /= l;
-		y /= l;
-		z /= l;
-	}
-
-	float len() const {
-		return sqrt(x * x + y * y + z * z);
-	}
-};
-
-struct M44 {
-	float m[4][4] = { 0 };
-
-	void asRotateX(GLfloat phi) {
-		m[0][0] = 1; m[0][1] = 0;			m[0][2] = 0;		 m[0][3] = 0;
-		m[1][0] = 0; m[1][1] = cos(phi);	m[1][2] = -sin(phi); m[1][3] = 0;
-		m[2][0] = 0; m[2][1] = sin(phi);	m[2][2] = cos(phi);	 m[2][3] = 0;
-		m[3][0] = 0; m[3][1] = 0;			m[3][2] = 0;		 m[3][3] = 1;
-	}
-
-	void asRotateY(GLfloat  phi) {
-		m[0][0] = cos(phi);   m[0][1] = 0;			m[0][2] = sin(phi);	m[0][3] = 0;
-		m[1][0] = 0;		  m[1][1] = 1;		   	m[1][2] = 0;		m[1][3] = 0;
-		m[2][0] = -sin(phi);  m[2][1] = 0;			m[2][2] = cos(phi); m[2][3] = 0;
-		m[3][0] = 0;		  m[3][1] = 0;			m[3][2] = 0;		m[3][3] = 1;
-	}
-
-	void asRotateZ(GLfloat phi) {
-		m[0][0] = cos(phi);   m[0][1] = -sin(phi);	m[0][2] = 0; m[0][3] = 0;
-		m[1][0] = sin(phi);	  m[1][1] = cos(phi);	m[1][2] = 0; m[1][3] = 0;
-		m[2][0] = 0;		  m[2][1] = 0;			m[2][2] = 1; m[2][3] = 0;
-		m[3][0] = 0;		  m[3][1] = 0;			m[3][2] = 0; m[3][3] = 1;
-	}
-
-	void asTranslate(GLfloat x, GLfloat y, GLfloat z) {
-		m[0][0] = 1; m[0][1] = 0; m[0][2] = 0; m[0][3] = x;
-		m[1][0] = 0; m[1][1] = 1; m[1][2] = 0; m[1][3] = y;
-		m[2][0] = 0; m[2][1] = 0; m[2][2] = 1; m[2][3] = z;
-		m[3][0] = 0; m[3][1] = 0; m[3][2] = 0; m[3][3] = 1;
-	}
-
-	void FillFrom(M44& s) {
-		for (int y = 0; y < 4; ++y)
-			for (int x = 0; x < 4; ++x)
-				m[y][x] = s.m[y][x];
-	}
-
-	void Mult(M44& o) {
-		M44 r;
-		for (int l = 0; l < 4; ++l) {
-			r.m[l][0] = m[l][0] * o.m[0][0] + m[l][1] * o.m[1][0] + m[l][2] * o.m[2][0] + m[l][3] * o.m[3][0];
-			r.m[l][1] = m[l][0] * o.m[0][1] + m[l][1] * o.m[1][1] + m[l][2] * o.m[2][1] + m[l][3] * o.m[3][1];
-			r.m[l][2] = m[l][0] * o.m[0][2] + m[l][1] * o.m[1][2] + m[l][2] * o.m[2][2] + m[l][3] * o.m[3][2];
-			r.m[l][3] = m[l][0] * o.m[0][3] + m[l][1] * o.m[1][3] + m[l][2] * o.m[2][3] + m[l][3] * o.m[3][3];
-		}
-
-		FillFrom(r);
-	}
-
-	void Print() const {
-		Log.printf("[ %f\t%f\t%f\t%f ]\n", m[0][0], m[0][1], m[0][2], m[0][3]);
-		Log.printf("[ %f\t%f\t%f\t%f ]\n", m[1][0], m[1][1], m[1][2], m[1][3]);
-		Log.printf("[ %f\t%f\t%f\t%f ]\n", m[2][0], m[2][1], m[2][2], m[2][3]);
-		Log.printf("[ %f\t%f\t%f\t%f ]\n", m[3][0], m[3][1], m[3][2], m[3][3]);
-	}
-
-	Vec3F ApplyOnPoint(Vec3F& p) const {
-		float nX = m[0][0] * p.x + m[0][1] * p.y + m[0][2] * p.z + m[0][3];
-		float nY = m[1][0] * p.x + m[1][1] * p.y + m[1][2] * p.z + m[1][3];
-		float nZ = m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3];
-
-		return Vec3F{ nX , nY, nZ };
-	}
-
-};
 
 struct OpenGLProperties {
 	string nameVendor;
@@ -670,9 +543,9 @@ struct Camera {
 		XYFloat unit = pixelRange();
 		Vec3F posDiff = { -dx * unit.x, -dy * unit.y, 0 };
 
-		M44 mX; mX.asRotateX(rad(angle.x));
-		M44 mY; mY.asRotateY(rad(angle.y));
-		M44 mZ; mZ.asRotateZ(rad(angle.z));
+		M44<GLfloat> mX; mX.asRotateX(rad(angle.x));
+		M44<GLfloat> mY; mY.asRotateY(rad(angle.y));
+		M44<GLfloat> mZ; mZ.asRotateZ(rad(angle.z));
 
 		posDiff = mX.ApplyOnPoint(posDiff);
 		posDiff = mY.ApplyOnPoint(posDiff);
@@ -1090,13 +963,13 @@ struct DrawPlane : UITrigger {
 		float pRight = xRatio * c.frustumRight; // minus xRatio because we rotate along Y axis
 		float pTop = -yRatio * c.frustumTop;
 
-		M44 m; m.asRotateX(0);
+		M44<GLfloat> m; m.asRotateX(0);
 
-		M44 mX; mX.asRotateX(rad(c.angle.x));
-		M44 mY; mY.asRotateY(rad(c.angle.y));
-		M44 mZ; mZ.asRotateZ(rad(c.angle.z));
+		M44<GLfloat> mX; mX.asRotateX(rad(c.angle.x));
+		M44<GLfloat> mY; mY.asRotateY(rad(c.angle.y));
+		M44<GLfloat> mZ; mZ.asRotateZ(rad(c.angle.z));
 
-		M44 mT; mT.asTranslate(c.pos.x, c.pos.y, c.pos.z);
+		M44<GLfloat> mT; mT.asTranslate(c.pos.x, c.pos.y, c.pos.z);
 
 		m.Mult(mT);
 
@@ -1122,9 +995,9 @@ struct DrawPlane : UITrigger {
 		Vec3F vRotated = { 0,0,0 };
 		Vec3F v = { moveAlongX * moveSpeed, 0, moveAlongZ * moveSpeed };
 
-		M44 m; m.asRotateX(0);
-		M44 mX;	mX.asRotateX(rad(c.angle.x));
-		M44 mY; mY.asRotateY(rad(c.angle.y));
+		M44<GLfloat> m; m.asRotateX(0);
+		M44<GLfloat> mX;	mX.asRotateX(rad(c.angle.x));
+		M44<GLfloat> mY; mY.asRotateY(rad(c.angle.y));
 
 		m.Mult(mY);
 		m.Mult(mX);
@@ -1140,11 +1013,11 @@ struct DrawPlane : UITrigger {
 		Vec3F vRotated = { 0,0,0 };
 		Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
 
-		M44 m; m.asRotateX(0);
+		M44<GLfloat> m; m.asRotateX(0);
 
-		M44 mX; mX.asRotateX(rad(c.angle.x));
-		M44 mY; mY.asRotateY(rad(c.angle.y));
-		M44 mZ; mZ.asRotateZ(rad(c.angle.z));
+		M44<GLfloat> mX; mX.asRotateX(rad(c.angle.x));
+		M44<GLfloat> mY; mY.asRotateY(rad(c.angle.y));
+		M44<GLfloat> mZ; mZ.asRotateZ(rad(c.angle.z));
 
 		m.Mult(mY);
 		m.Mult(mX);
@@ -1187,14 +1060,14 @@ struct DrawPlane : UITrigger {
 		float oX = App.pointerSpeed * -dY;
 
 		// apply current rotations
-		M44 mX; mX.asRotateX(rad(c.angle.x));
-		M44 mY; mY.asRotateY(rad(c.angle.y));
-		M44 mZ; mZ.asRotateZ(rad(c.angle.z));
+		M44<GLfloat> mX; mX.asRotateX(rad(c.angle.x));
+		M44<GLfloat> mY; mY.asRotateY(rad(c.angle.y));
+		M44<GLfloat> mZ; mZ.asRotateZ(rad(c.angle.z));
 
-		M44 mOY; mOY.asRotateY(rad(oY));
-		M44 mOX; mOX.asRotateX(rad(oX));
+		M44<GLfloat> mOY; mOY.asRotateY(rad(oY));
+		M44<GLfloat> mOX; mOX.asRotateX(rad(oX));
 
-		M44 m; m.asRotateX(0);
+		M44<GLfloat> m; m.asRotateX(0);
 
 		m.Mult(mY);
 		m.Mult(mX);
@@ -1217,7 +1090,7 @@ struct DrawPlane : UITrigger {
 
 		float radY = atan2(-fwd.x, -fwd.z);
 
-		M44 revY; revY.asRotateY(-radY);
+		M44<GLfloat> revY; revY.asRotateY(-radY);
 		Vec3F rotatedX = revY.ApplyOnPoint(fwd);
 
 		float radX = atan2(rotatedX.y, -rotatedX.z);
@@ -1225,10 +1098,10 @@ struct DrawPlane : UITrigger {
 		c.angle.x = deg(radX);
 		c.angle.y = deg(radY);
 
-		M44 mX; mX.asRotateX(rad(-c.angle.x));
-		M44 mY; mY.asRotateY(rad(-c.angle.y));
+		M44<GLfloat> mX; mX.asRotateX(rad(-c.angle.x));
+		M44<GLfloat> mY; mY.asRotateY(rad(-c.angle.y));
 
-		M44 m; m.asRotateX(0);
+		M44<GLfloat> m; m.asRotateX(0);
 
 		m.Mult(mX);
 		m.Mult(mY);

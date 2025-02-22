@@ -29,10 +29,11 @@ set(SDLIMAGE_XV OFF)
 
 add_subdirectory(SDL)
 add_subdirectory(SDL_image)
-add_executable(Explorer3D main.cxx)
+add_executable(Explorer3D main.cxx log.cxx trig.cxx includes/m44.h includes/trig.h includes/log.h)
 
 target_include_directories(Explorer3D PUBLIC
-                           "${PROJECT_BINARY_DIR}"
+                            "includes"
+                            "${PROJECT_BINARY_DIR}"
                            )
 
 target_link_libraries(Explorer3D 
