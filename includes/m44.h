@@ -2,34 +2,32 @@
 #include <trig.h>
 
 template <typename T> struct M44 {
-	float m[4][4] = { 0 };
+	T m[4][4] = { 1,0,0,0, 0,1,0,0 , 0,0,1,0, 0,0,0,1 };
 
-	void asRotateX(T phi) {
-		m[0][0] = 1; m[1][0] = 0;			m[2][0] = 0;		 m[3][0] = 0;
-		m[0][1] = 0; m[1][1] = cos(phi);	m[2][1] = -sin(phi); m[3][1] = 0;
-		m[0][2] = 0; m[1][2] = sin(phi);	m[2][2] = cos(phi);	 m[3][2] = 0;
-		m[0][3] = 0; m[1][3] = 0;			m[2][3] = 0;		 m[3][3] = 1;
+	M44& asRotateX(T phi) {
+		m[1][1] = cos(phi);	m[2][1] = -sin(phi);
+		m[1][2] = sin(phi);	m[2][2] = cos(phi);
+		return *this;
 	}
 
-	void asRotateY(T phi) {
-		m[0][0] = cos(phi);   m[1][0] = 0;			m[2][0] = sin(phi);	m[3][0] = 0;
-		m[0][1] = 0;		  m[1][1] = 1;		   	m[2][1] = 0;		m[3][1] = 0;
-		m[0][2] = -sin(phi);  m[1][2] = 0;			m[2][2] = cos(phi); m[3][2] = 0;
-		m[0][3] = 0;		  m[1][3] = 0;			m[2][3] = 0;		m[3][3] = 1;
+	M44& asRotateY(T phi) {
+		m[0][0] = cos(phi);   m[2][0] = sin(phi);
+		m[0][2] = -sin(phi);  m[2][2] = cos(phi);
+		return *this;
 	}
 
-	void asRotateZ(T phi) {
-		m[0][0] = cos(phi);   m[1][0] = -sin(phi);	m[2][0] = 0; m[3][0] = 0;
-		m[0][1] = sin(phi);	  m[1][1] = cos(phi);	m[2][1] = 0; m[3][1] = 0;
-		m[0][2] = 0;		  m[1][2] = 0;			m[2][2] = 1; m[3][2] = 0;
-		m[0][3] = 0;		  m[1][3] = 0;			m[2][3] = 0; m[3][3] = 1;
+	M44& asRotateZ(T phi) {
+		m[0][0] = cos(phi);   m[1][0] = -sin(phi);
+		m[0][1] = sin(phi);	  m[1][1] = cos(phi);
+		return *this;
 	}
 
-	void asTranslate(T x, T y, T z) {
-		m[0][0] = 1; m[1][0] = 0; m[2][0] = 0; m[3][0] = x;
-		m[0][1] = 0; m[1][1] = 1; m[2][1] = 0; m[3][1] = y;
-		m[0][2] = 0; m[1][2] = 0; m[2][2] = 1; m[3][2] = z;
-		m[0][3] = 0; m[1][3] = 0; m[2][3] = 0; m[3][3] = 1;
+	M44& asTranslate(T x, T y, T z) {
+		m[3][0] = x;
+		m[3][1] = y;
+		m[3][2] = z;
+
+		return *this;
 	}
 
 	void FillFrom(M44& s) {
