@@ -20,6 +20,10 @@ using namespace std;
 
 typedef M44<GLfloat> M44F;
 
+float calculateCenter(float space, float box) {
+	return (space - box) / 2;
+}
+
 template <typename T> struct XYGeneric {
 	T x = 0;
 	T y = 0;
@@ -310,9 +314,6 @@ struct TextPainterContext {
 
 } TextPainter;
 
-float calculateCenter(float space, float box) {
-	return (space - box) / 2;
-}
 
 enum UIRectState {
 	UICursorIdle,
@@ -646,6 +647,58 @@ struct Camera {
 const float Camera::fovMax = 175;
 const float Camera::fovMin = 5;
 
+struct Renderable {
+	
+	Vec3F pos;
+	Vec3F angle;
+
+	void render(int frames) const {
+		// first approach - fixed cube rendering
+		static GLubyte facesIndexes[] = {
+			0,1,2,3, // -z
+			4,5,6,7, // +z
+
+			0,1,5,4, // -x
+			2,3,7,6, // +x
+
+			1,2,6,5, // -y
+			0,3,7,4, // +y
+
+		};
+		
+		GLfloat vertices[] = {
+			-1, 1,-1,
+			-1,-1,-1,
+			 1,-1,-1,
+			 1, 1,-1,
+
+			-1, 1, 1,
+			-1,-1, 1,
+			 1,-1, 1,
+			 1, 1, 1,
+		};
+
+		GLfloat colors[] = { 
+			1.0, 0.0, 0.0,
+			0.0, 0.1, 0.0,
+			0.0, 0.0, 1.0,
+			1.0, 1.0, 0.0,
+
+			0.0, 1.0, 1.0,
+			1.0, 0.0, 1.0,
+			1.0, 1.0, 1.0,
+			0.3, 0.3, 0.3,
+		};
+
+
+		glColorPointer(3, GL_FLOAT, 0, colors);
+		glVertexPointer(3, GL_FLOAT, 0, vertices);
+
+		glDrawElements(GL_QUADS, 6*4, GL_UNSIGNED_BYTE, facesIndexes);
+
+	}
+};
+
 struct DrawPlane : UITrigger {
 	Camera camera;
 	Camera consoleView;
@@ -659,6 +712,8 @@ struct DrawPlane : UITrigger {
 	AllViews focusView;
 
 	vector<pair<Vec3F, Vec3F>> lines;
+	vector<Renderable> renderables;
+
 	MovementStrategy movement = MoveHybrid;
 	const int fovDiff = 1;
 
@@ -866,6 +921,9 @@ struct DrawPlane : UITrigger {
 		setupXYZCameras();
 		setupUI();
 		onResize();
+
+		Renderable r;
+		renderables.push_back(r);
 	}
 
 	void onResize() {
@@ -1194,6 +1252,14 @@ struct DrawPlane : UITrigger {
 		glEnd();
 	}
 
+	void renderRenderables() const{
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glEnableClientState(GL_COLOR_ARRAY);
+		for (auto ptr = renderables.cbegin(); ptr < renderables.cend(); ++ptr) {
+			ptr->render(frames);
+		}
+	}
+
 	void renderScene(Camera& c) {
 		c.applyViewport();
 		c.applyProjection();
@@ -1217,6 +1283,9 @@ struct DrawPlane : UITrigger {
 
 		renderTexturedPlane();
 		renderTraceLines();
+
+		renderRenderables();
+
 	}
 
 	void renderOverlay2D() {
