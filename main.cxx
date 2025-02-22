@@ -12,14 +12,13 @@
 #include <gl/gl.h>
 
 #include <cmath>
-
-
 #include <log.h>
 #include <trig.h>
 #include <m44.h>
 
 using namespace std;
 
+typedef M44<GLfloat> M44F;
 
 template <typename T> struct XYGeneric {
 	T x = 0;
@@ -543,17 +542,11 @@ struct Camera {
 		XYFloat unit = pixelRange();
 		Vec3F posDiff = { -dx * unit.x, -dy * unit.y, 0 };
 
-		M44<GLfloat> mX; mX.asRotateX(rad(angle.x));
-		M44<GLfloat> mY; mY.asRotateY(rad(angle.y));
-		M44<GLfloat> mZ; mZ.asRotateZ(rad(angle.z));
+		posDiff = M44F().asRotateX(rad(angle.x)).ApplyOnPoint(posDiff);
+		posDiff = M44F().asRotateY(rad(angle.y)).ApplyOnPoint(posDiff);
+		posDiff = M44F().asRotateZ(rad(angle.z)).ApplyOnPoint(posDiff);
 
-		posDiff = mX.ApplyOnPoint(posDiff);
-		posDiff = mY.ApplyOnPoint(posDiff);
-		posDiff = mZ.ApplyOnPoint(posDiff);
-
-		pos.x += posDiff.x;
-		pos.y += posDiff.y;
-		pos.z += posDiff.z;
+		pos.add(posDiff);
 
 	}
 
@@ -963,28 +956,19 @@ struct DrawPlane : UITrigger {
 		float pRight = xRatio * c.frustumRight; // minus xRatio because we rotate along Y axis
 		float pTop = -yRatio * c.frustumTop;
 
-		M44<GLfloat> m; m.asRotateX(0);
-
-		M44<GLfloat> mX; mX.asRotateX(rad(c.angle.x));
-		M44<GLfloat> mY; mY.asRotateY(rad(c.angle.y));
-		M44<GLfloat> mZ; mZ.asRotateZ(rad(c.angle.z));
-
-		M44<GLfloat> mT; mT.asTranslate(c.pos.x, c.pos.y, c.pos.z);
-
-		m.Mult(mT);
-
-		m.Mult(mY);
-		m.Mult(mX);
-		m.Mult(mZ);
+		M44F m;
+		m
+			.Mult(M44F().asTranslate(c.pos.x, c.pos.y, c.pos.z))
+			.Mult(M44F().asRotateY(rad(c.angle.y)))
+			.Mult(M44F().asRotateX(rad(c.angle.x)))
+			.Mult(M44F().asRotateZ(rad(c.angle.z)));
 
 		pair<Vec3F, Vec3F> p;
 
 		Vec3F lineStart = { 0,0,0 };
 		Vec3F lineEnd = { pRight,pTop,-c.nearPlane };
-		lineEnd.normalize();
-		lineEnd.x *= c.farPlane;
-		lineEnd.y *= c.farPlane;
-		lineEnd.z *= c.farPlane;
+		lineEnd.normalize().mult(c.farPlane);
+		
 		p.first = m.ApplyOnPoint(lineStart);
 		p.second = m.ApplyOnPoint(lineEnd);
 
@@ -995,38 +979,29 @@ struct DrawPlane : UITrigger {
 		Vec3F vRotated = { 0,0,0 };
 		Vec3F v = { moveAlongX * moveSpeed, 0, moveAlongZ * moveSpeed };
 
-		M44<GLfloat> m; m.asRotateX(0);
-		M44<GLfloat> mX;	mX.asRotateX(rad(c.angle.x));
-		M44<GLfloat> mY; mY.asRotateY(rad(c.angle.y));
-
-		m.Mult(mY);
-		m.Mult(mX);
+		M44F m;
+		m
+			.Mult(M44F().asRotateY(rad(c.angle.y)))
+			.Mult(M44F().asRotateX(rad(c.angle.x)));
 
 		vRotated = m.ApplyOnPoint(v);
+		vRotated.y = moveAlongY * moveSpeed;
 
-		c.pos.x += vRotated.x;
-		c.pos.y += moveAlongY * moveSpeed;
-		c.pos.z += vRotated.z;
+		c.pos.add(vRotated);
 	}
 
 	void applyMovesHybrid(Camera &c) {
 		Vec3F vRotated = { 0,0,0 };
 		Vec3F v = { moveAlongX * moveSpeed, moveAlongY * moveSpeed, moveAlongZ * moveSpeed };
 
-		M44<GLfloat> m; m.asRotateX(0);
-
-		M44<GLfloat> mX; mX.asRotateX(rad(c.angle.x));
-		M44<GLfloat> mY; mY.asRotateY(rad(c.angle.y));
-		M44<GLfloat> mZ; mZ.asRotateZ(rad(c.angle.z));
-
-		m.Mult(mY);
-		m.Mult(mX);
-		m.Mult(mZ);
+		M44F m; 
+		m
+			.Mult(M44F().asRotateY(rad(c.angle.y)))
+			.Mult(M44F().asRotateX(rad(c.angle.x)))
+			.Mult(M44F().asRotateZ(rad(c.angle.z)));
 
 		vRotated = m.ApplyOnPoint(v);
-		c.pos.x += vRotated.x;
-		c.pos.y += vRotated.y;
-		c.pos.z += vRotated.z;
+		c.pos.add(vRotated);
 	}
 
 	void applyMoves(Camera &c) {
@@ -1059,23 +1034,13 @@ struct DrawPlane : UITrigger {
 		float oY = App.pointerSpeed * -dX;
 		float oX = App.pointerSpeed * -dY;
 
-		// apply current rotations
-		M44<GLfloat> mX; mX.asRotateX(rad(c.angle.x));
-		M44<GLfloat> mY; mY.asRotateY(rad(c.angle.y));
-		M44<GLfloat> mZ; mZ.asRotateZ(rad(c.angle.z));
-
-		M44<GLfloat> mOY; mOY.asRotateY(rad(oY));
-		M44<GLfloat> mOX; mOX.asRotateX(rad(oX));
-
-		M44<GLfloat> m; m.asRotateX(0);
-
-		m.Mult(mY);
-		m.Mult(mX);
-		m.Mult(mZ);
-
-		m.Mult(mOY);
-		m.Mult(mOX);
-
+		M44F m;
+		m.Mult(M44F().asRotateY(rad(c.angle.y)))
+			.Mult(M44F().asRotateX(rad(c.angle.x)))
+			.Mult(M44F().asRotateZ(rad(c.angle.z)))
+			.Mult(M44F().asRotateY(rad(oY)))
+			.Mult(M44F().asRotateX(rad(oX)));
+		
 
 		Vec3F fwd = { 0,0,-1 };
 		Vec3F up = { 0,1,0 };
@@ -1090,7 +1055,7 @@ struct DrawPlane : UITrigger {
 
 		float radY = atan2(-fwd.x, -fwd.z);
 
-		M44<GLfloat> revY; revY.asRotateY(-radY);
+		M44F revY; revY.asRotateY(-radY);
 		Vec3F rotatedX = revY.ApplyOnPoint(fwd);
 
 		float radX = atan2(rotatedX.y, -rotatedX.z);
@@ -1098,13 +1063,10 @@ struct DrawPlane : UITrigger {
 		c.angle.x = deg(radX);
 		c.angle.y = deg(radY);
 
-		M44<GLfloat> mX; mX.asRotateX(rad(-c.angle.x));
-		M44<GLfloat> mY; mY.asRotateY(rad(-c.angle.y));
-
-		M44<GLfloat> m; m.asRotateX(0);
-
-		m.Mult(mX);
-		m.Mult(mY);
+		M44F m;
+		m
+			.Mult(M44F().asRotateX(rad(-c.angle.x)))
+			.Mult(M44F().asRotateY(rad(-c.angle.y)));
 
 		Vec3F revUp = m.ApplyOnPoint(up);
 
@@ -1379,7 +1341,7 @@ int main(int argc, char** argv) {
 			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
 				if ((mouseEvent->button == SDL_BUTTON_LEFT || mouseEvent->button == SDL_BUTTON_MIDDLE) && !App.mouseCaptureMode) {
-					//d.lines.push_back(d.traceLine(d.camera, mouseEvent->x, mouseEvent->y));
+					d.lines.push_back(d.traceLine(d.camera, mouseEvent->x, mouseEvent->y));
 					d.cursorButton({ mouseEvent->x, mouseEvent->y }, mouseEvent->button, false);
 
 				}

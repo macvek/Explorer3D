@@ -7,7 +7,9 @@ struct Vec3F {
 
 	void Print() const;
 
-	void normalize();
+	Vec3F& normalize();
+	Vec3F& mult(float c);
+	Vec3F& add(const Vec3F& o);
 
 	float len() const;
 };

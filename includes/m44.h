@@ -36,7 +36,7 @@ template <typename T> struct M44 {
 				m[y][x] = s.m[y][x];
 	}
 
-	void Mult(M44& o) {
+	M44& Mult(M44& o) {
 		M44 r;
 		for (int l = 0; l < 4; ++l) {
 			r.m[0][l] = m[0][l] * o.m[0][0] + m[1][l] * o.m[0][1] + m[2][l] * o.m[0][2] + m[3][l] * o.m[0][3];
@@ -46,6 +46,7 @@ template <typename T> struct M44 {
 		}
 
 		FillFrom(r);
+		return *this;
 	}
 
 	void Print() const {
