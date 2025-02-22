@@ -1129,7 +1129,7 @@ struct DrawPlane : UITrigger {
 		cameraAtXY(xy).applyCameraWheel(dy);
 	}
 
-	void texturedPlane() {
+	void renderTexturedPlane() {
 		// playing with texture 
 		{
 			glPushMatrix();
@@ -1185,6 +1185,15 @@ struct DrawPlane : UITrigger {
 
 	}
 
+	void renderTraceLines() {
+		glBegin(GL_LINES);
+		for (auto p = lines.cbegin(); p < lines.cend(); ++p) {
+			glColor3f(0, 1, 1); glVertex3f(p->first.x, p->first.y, p->first.z);
+			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
+		}
+		glEnd();
+	}
+
 	void renderScene(Camera& c) {
 		c.applyViewport();
 		c.applyProjection();
@@ -1206,14 +1215,8 @@ struct DrawPlane : UITrigger {
 		drawQuad();
 		glPopMatrix();
 
-		texturedPlane();
-
-		glBegin(GL_LINES);
-		for (auto p = lines.cbegin(); p < lines.cend(); ++p) {
-			glColor3f(0, 1, 1); glVertex3f(p->first.x, p->first.y, p->first.z);
-			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
-		}
-		glEnd();
+		renderTexturedPlane();
+		renderTraceLines();
 	}
 
 	void renderOverlay2D() {
@@ -1300,19 +1303,17 @@ struct DrawPlane : UITrigger {
 	}
 
 	void drawGrid(GLfloat y) {
+		glBegin(GL_LINES);
 		for (int x = -10; x <= 10; ++x) {
-			glBegin(GL_LINES);
 			glVertex3f(x, y, -10);
 			glVertex3f(x, y, 10);
-			glEnd();
 		}
 
 		for (int z = -10; z <= 10; ++z) {
-			glBegin(GL_LINES);
 			glVertex3f(-10, y, z);
 			glVertex3f(10, y, z);
-			glEnd();
 		}
+		glEnd();
 	}
 
 };
