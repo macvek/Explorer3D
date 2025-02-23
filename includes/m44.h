@@ -4,6 +4,10 @@
 template <typename T> struct M44 {
 	T m[4][4] = { 1,0,0,0, 0,1,0,0 , 0,0,1,0, 0,0,0,1 };
 
+	T* ptr() const {
+		return (T*)m;
+	}
+
 	M44& asRotateX(T phi) {
 		m[1][1] = cos(phi);	m[2][1] = -sin(phi);
 		m[1][2] = sin(phi);	m[2][2] = cos(phi);
@@ -19,6 +23,13 @@ template <typename T> struct M44 {
 	M44& asRotateZ(T phi) {
 		m[0][0] = cos(phi);   m[1][0] = -sin(phi);
 		m[0][1] = sin(phi);	  m[1][1] = cos(phi);
+		return *this;
+	}
+
+	M44 & asScale(T sX, T sY, T sZ) {
+		m[0][0] = sX;
+		m[1][1] = sY;
+		m[2][2] = sZ;
 		return *this;
 	}
 

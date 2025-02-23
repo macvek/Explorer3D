@@ -692,13 +692,27 @@ struct Renderable {
 		};
 
 		glPushMatrix();
-		glTranslatef(pos.x, pos.y, pos.z);
-
-		glRotatef(angle.z, 0, 0, 1);
-		glRotatef(angle.x, 1, 0, 0);
-		glRotatef(angle.y, 0, 1, 0);
 		
-		glScalef(scale.x, scale.y, scale.z);
+		bool glMatrix = false;
+		if (glMatrix) {
+			glTranslatef(pos.x, pos.y, pos.z);
+
+			glRotatef(angle.z, 0, 0, 1);
+			glRotatef(angle.x, 1, 0, 0);
+			glRotatef(angle.y, 0, 1, 0);
+
+			glScalef(scale.x, scale.y, scale.z);
+		}
+		else {
+			M44F m;
+			m.asTranslate(pos.x, pos.y, pos.z)
+				.Mult(M44F().asRotateZ(angle.z))
+				.Mult(M44F().asRotateX(angle.x))
+				.Mult(M44F().asRotateY(angle.y))
+				.Mult(M44F().asScale(scale.x, scale.y, scale.z));
+
+			glMultMatrixf(m.ptr());
+		}
 
 		glColorPointer(3, GL_FLOAT, 0, colors);
 		glVertexPointer(3, GL_FLOAT, 0, vertices);
