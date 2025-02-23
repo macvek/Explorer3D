@@ -653,14 +653,22 @@ struct Line {
 	Vec3F second;
 };
 
-struct Quad {
-	int id;
-	Vec3F vertices[4];
-};
-
 struct Triangle {
 	int id;
 	Vec3F vertices[3];
+};
+
+
+struct Quad {
+	int id;
+	Vec3F vertices[4];
+
+	pair<Triangle, Triangle> asTris() {
+		pair<Triangle, Triangle> p;
+		p.first = { id, {vertices[0], vertices[1], vertices[2]} };
+		p.second = { id, {vertices[2], vertices[3], vertices[0]} };
+		return p;
+	}
 };
 
 struct HitTest {
@@ -668,7 +676,7 @@ struct HitTest {
 	Line line;
 
 	bool check() {
-		
+		return false;
 	}
 };
 
@@ -679,10 +687,7 @@ struct Renderable {
 	Vec3F scale = { 1,1,1 };
 
 	bool showSingle = true;
-
-	void render(int frames) const {
-		// first approach - fixed cube rendering
-		static GLubyte facesIndices[] = {
+	GLubyte facesIndices[24] = {
 			0,1,2,3, // -z
 			4,5,6,7, // +z
 
@@ -691,10 +696,9 @@ struct Renderable {
 
 			1,2,6,5, // -y
 			0,3,7,4, // +y
+	};
 
-		};
-		
-		GLfloat vertices[] = {
+	GLfloat vertices[24] = {
 			-1, 1,-1,
 			-1,-1,-1,
 			 1,-1,-1,
@@ -704,9 +708,9 @@ struct Renderable {
 			-1,-1, 1,
 			 1,-1, 1,
 			 1, 1, 1,
-		};
+	};
 
-		GLfloat colors[] = { 
+	GLfloat colors[24] = {
 			1.0, 0.0, 0.0,
 			0.0, 0.1, 0.0,
 			0.0, 0.0, 1.0,
@@ -716,8 +720,22 @@ struct Renderable {
 			1.0, 0.0, 1.0,
 			1.0, 1.0, 1.0,
 			0.3, 0.3, 0.3,
+	};
+
+	void mesh(vector<Triangle> &fill) {
+		Triangle t = {
+			 99, {
+				{vertices[0], vertices[1], vertices[2]},
+				{vertices[3], vertices[4], vertices[5]},
+				{vertices[6], vertices[7], vertices[8]}
+			}
 		};
 
+		fill.push_back(t);
+	}
+
+	void render(int frames) const {
+		// first approach - fixed cube rendering
 		glPushMatrix();
 		
 		bool glMatrix = false;
@@ -1076,7 +1094,14 @@ struct DrawPlane : UITrigger {
 	}
 
 	void onRunHittest() {
-		Log.printf("Hit test\n");
+		HitTest ht;
+		ht.line = lines[0];
+		
+		renderables[0].mesh(ht.tris);
+
+		int response = ht.check();
+
+		Log.printf("ht.check -> %i\n", response);
 	}
 
 	Line traceLine(const Camera& c, const float x, const float y) {
