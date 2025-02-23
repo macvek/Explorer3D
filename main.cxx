@@ -673,6 +673,44 @@ struct HitTest {
 	vector<Triangle> tris;
 	Line line;
 
+	// return 1 if point is above line, -1 if is below, 0 if is on the line or outside of X axis
+	int overUnderLine(Vec3F& a, Vec3F& b) const{
+		// out of X axis
+		if (a.x < 0 && b.x < 0 || a.x > 0 && b.x > 0) {
+			return 0;
+		}
+
+		// both points are below (Y grows upwards) , so [0,0] is above
+		if (a.y < 0 && b.y < 0) {
+			return 1;
+		}
+
+		// both points are above, so [0,0] is below
+		if (a.y > 0 && b.y > 0) {
+			return -1;
+		}
+
+		// calculate f(0) for line between a and b
+		float lA = (b.y - a.y) / (b.x - a.x);
+		float lB = a.y - lA * a.x;
+
+		if (lB < 0) return 1;  // point [0,0] is above line hiting X
+		if (lB > 0) return -1;
+		return 0;
+	}
+
+	// checks if point [0,0] is inside triangle a,b,c ignoring Z axis
+	bool hitTriangle(Vec3F& a, Vec3F& b, Vec3F& c) const {
+		int ab = overUnderLine(a, b);
+		int ac = overUnderLine(a, c);
+		int bc = overUnderLine(b, c);
+
+		int sum = ab + ac + bc;
+
+		// if is out then will reach -2 or 2 or in corner case of sharing X with vertex => -3 or 3
+		return sum >= -1 && sum <= 1;
+	}
+
 	bool check() const{
 		Vec3F dir = line.second;
 		dir.sub(line.first);
@@ -689,10 +727,10 @@ struct HitTest {
 			Vec3F a = m.ApplyOnPoint(t->vertices[0]);
 			Vec3F b = m.ApplyOnPoint(t->vertices[1]);
 			Vec3F c = m.ApplyOnPoint(t->vertices[2]);
-
-			a.Print();
-			b.Print();
-			c.Print();
+			
+			if (hitTriangle(a, b, c)) {
+				return true;
+			}
 		}
 
 		// check if point [0,0] lays within a triangle
