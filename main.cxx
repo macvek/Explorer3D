@@ -677,21 +677,24 @@ struct HitTest {
 		Vec3F dir = line.second;
 		dir.sub(line.first);
 
-		dir.Print();
-
 		Vec3F angles = dir.rotationYXZ(Vec3F::UP);
-		angles.Print();
 
+		// Align all objects along 'line' so all calculations are along x,y axises
 		M44F m;
-		m.asRotateX(-angles.x)
-			.Mult(M44F().asRotateY(-angles.y));
+		m.Mult(M44F().asRotateX(-angles.x))
+			.Mult(M44F().asRotateY(-angles.y))
+			.Mult(M44F().asTranslate(-line.first.x, -line.first.y, -line.first.z));
 
-		Vec3F rotated = m.ApplyOnPoint(dir);
-		rotated.Print();
-		//verify rotation
+		for (auto t = tris.cbegin(); t < tris.cend(); t++) {
+			Vec3F a = m.ApplyOnPoint(t->vertices[0]);
+			Vec3F b = m.ApplyOnPoint(t->vertices[1]);
+			Vec3F c = m.ApplyOnPoint(t->vertices[2]);
 
+			a.Print();
+			b.Print();
+			c.Print();
+		}
 
-		// rotate triangle, so it can be calculated using only x,y;
 		// check if point [0,0] lays within a triangle
 		// calculate intersection point, i.e. point on triangle
 		return false;
@@ -1122,9 +1125,17 @@ struct DrawPlane : UITrigger {
 
 	void onRunHittest() {
 		HitTest ht;
-		ht.line = lines[0];
-		
-		renderables[0].mesh(ht.tris);
+
+		boolean fullSample = false;
+		if (fullSample) {
+			ht.line = lines[0];
+			renderables[0].mesh(ht.tris);
+		}
+		else {
+			ht.line = { { 0,0,0 }, {1,0,0} }; // looking right
+			ht.tris.push_back({ 99, {{2,1,0}, {2,-1,-1}, {2,-1,1}} }); // triangle facing -X axis, around X axis
+		}
+
 
 		int response = ht.check();
 
