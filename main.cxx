@@ -699,8 +699,22 @@ struct HitTest {
 		return 0;
 	}
 
+	int pairIsOut(Vec3F& a, Vec3F& b) const {
+		if (a.x < 0 && b.x < 0 || a.x > 0 && b.x > 0) {
+			return 1;
+		}
+		else {
+			return 0;
+		}
+	}
+
 	// checks if point [0,0] is inside triangle a,b,c ignoring Z axis
 	bool hitTriangle(Vec3F& a, Vec3F& b, Vec3F& c) const {
+		int outOfX = pairIsOut(a,b) + pairIsOut(b,c) + pairIsOut(a,c);
+		if (outOfX == 3) { // it is either 0,1 or 3 for triangle
+			return false;
+		}
+		
 		int ab = overUnderLine(a, b);
 		int ac = overUnderLine(a, c);
 		int bc = overUnderLine(b, c);
@@ -1070,7 +1084,7 @@ struct DrawPlane : UITrigger {
 		r.scale = { 1,1,1 };
 		renderables.push_back(r);
 
-		lines.push_back({{ 0.366,0.360, -3.835 }, { 9.869, -0.461, -6.839 }});
+		//lines.push_back({{ 0.366,0.360, -3.835 }, { 9.869, -0.461, -6.839 }});
 	}
 
 	void onResize() {
@@ -1561,7 +1575,7 @@ int main(int argc, char** argv) {
 			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
 				if ((mouseEvent->button == SDL_BUTTON_LEFT || mouseEvent->button == SDL_BUTTON_MIDDLE) && !App.mouseCaptureMode) {
-					//d.lines.push_back(d.traceLine(d.camera, mouseEvent->x, mouseEvent->y));
+					d.lines.push_back(d.traceLine(d.camera, mouseEvent->x, mouseEvent->y));
 					d.cursorButton({ mouseEvent->x, mouseEvent->y }, mouseEvent->button, false);
 
 				}
