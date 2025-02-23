@@ -1126,16 +1126,8 @@ struct DrawPlane : UITrigger {
 	void onRunHittest() {
 		HitTest ht;
 
-		boolean fullSample = true;
-		if (fullSample) {
-			ht.line = lines[0];
-			renderables[0].mesh(ht.tris);
-		}
-		else {
-			ht.line = { { 0,0,0 }, {1,0,0} }; // looking right
-			ht.tris.push_back({ 99, {{2,1,0}, {2,-1,-1}, {2,-1,1}} }); // triangle facing -X axis, around X axis
-		}
-
+		ht.line = lines[0];
+		renderables[0].mesh(ht.tris);
 
 		int response = ht.check();
 
