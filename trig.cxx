@@ -25,7 +25,17 @@ Vec3F& Vec3F::add(const Vec3F& o) {
 	return *this;
 }
 
-Vec3F Vec3F::rotationXYZ(const Vec3F &up) const{
+Vec3F& Vec3F::sub(const Vec3F& o) {
+	x -= o.x;
+	y -= o.y;
+	z -= o.z;
+	return *this;
+}
+
+Vec3F Vec3F::UP = { 0,1,0 };
+
+
+Vec3F Vec3F::rotationYXZ(const Vec3F &up) const{
 	float radY = atan2f(-x, -z);
 
 	M44F revY; revY.asRotateY(-radY);

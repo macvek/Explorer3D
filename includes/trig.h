@@ -3,6 +3,8 @@
 
 
 struct Vec3F {
+	static Vec3F UP;
+
 	float x, y, z;
 
 	void Print() const;
@@ -10,7 +12,8 @@ struct Vec3F {
 	Vec3F& normalize();
 	Vec3F& mult(float c);
 	Vec3F& add(const Vec3F& o);
-	Vec3F rotationXYZ(const Vec3F& up) const; // vector to rotate to point towards [0,0,-1]
+	Vec3F& sub(const Vec3F& o);
+	Vec3F rotationYXZ(const Vec3F& up) const; // vector to rotate to point towards [0,0,-1] applying in order : Y, X, Z
 
 	float len() const;
 };

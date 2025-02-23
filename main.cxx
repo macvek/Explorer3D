@@ -673,8 +673,24 @@ struct HitTest {
 	vector<Triangle> tris;
 	Line line;
 
-	bool check() {
-		// calculate rotation of a trace line -- calculate vector to rotate towards [0,0,-1]
+	bool check() const{
+		Vec3F dir = line.second;
+		dir.sub(line.first);
+
+		dir.Print();
+
+		Vec3F angles = dir.rotationYXZ(Vec3F::UP);
+		angles.Print();
+
+		M44F m;
+		m.asRotateX(-angles.x)
+			.Mult(M44F().asRotateY(-angles.y));
+
+		Vec3F rotated = m.ApplyOnPoint(dir);
+		rotated.Print();
+		//verify rotation
+
+
 		// rotate triangle, so it can be calculated using only x,y;
 		// check if point [0,0] lays within a triangle
 		// calculate intersection point, i.e. point on triangle
@@ -1216,7 +1232,7 @@ struct DrawPlane : UITrigger {
 	}
 
 	void vectorsToAngles(Camera &c, Vec3F& fwd, Vec3F& up) {
-		Vec3F rotationVector = fwd.rotationXYZ(up);
+		Vec3F rotationVector = fwd.rotationYXZ(up);
 		
 		c.angle.x = deg(rotationVector.x);
 		c.angle.y = deg(rotationVector.y);
