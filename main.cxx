@@ -652,14 +652,22 @@ struct Line {
 	Vec3F second;
 };
 
-struct Triagle {
+struct Quad {
+	int id;
+	Vec3F vertices[4];
+};
+
+struct Triangle {
 	int id;
 	Vec3F vertices[3];
 };
 
 struct HitTest {
-	bool check() {
+	vector<Triangle> tris;
+	Line line;
 
+	bool check() {
+		
 	}
 };
 
@@ -668,6 +676,8 @@ struct Renderable {
 	Vec3F pos = { 0,0,0 };
 	Vec3F angle = { 0,0,0 };
 	Vec3F scale = { 1,1,1 };
+
+	bool showSingle = true;
 
 	void render(int frames) const {
 		// first approach - fixed cube rendering
@@ -733,7 +743,12 @@ struct Renderable {
 		glColorPointer(3, GL_FLOAT, 0, colors);
 		glVertexPointer(3, GL_FLOAT, 0, vertices);
 
-		glDrawElements(GL_QUADS, 6*4, GL_UNSIGNED_BYTE, facesIndices);
+		if (showSingle) {
+			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_BYTE, facesIndices);
+		}
+		else {
+			glDrawElements(GL_QUADS, 6 * 4, GL_UNSIGNED_BYTE, facesIndices);
+		}
 		glPopMatrix();
 	}
 };
@@ -962,10 +977,13 @@ struct DrawPlane : UITrigger {
 		onResize();
 
 		Renderable r;
+		r.showSingle = true;
 		r.pos = { 5,1,-5 };
 		r.angle = { 45,45,45 };
-		r.scale = { 0.2,0.2,0.2 };
+		r.scale = { 1,1,1 };
 		renderables.push_back(r);
+
+		lines.push_back({{ 0.366,0.360, -3.835 }, { 9.869, -0.461, -6.839 }});
 	}
 
 	void onResize() {
@@ -1066,8 +1084,10 @@ struct DrawPlane : UITrigger {
 		Vec3F lineStart = { 0,0,0 };
 		Vec3F lineEnd = { pRight,pTop,-c.nearPlane };
 		lineEnd.normalize().mult(c.farPlane);
-		
-		return { m.ApplyOnPoint(lineStart) , m.ApplyOnPoint(lineEnd) };
+
+		Line l = { m.ApplyOnPoint(lineStart) , m.ApplyOnPoint(lineEnd) };
+		Log.printf("Line [%.3f %.3f %.3f] [%.3f %.3f %.3f]\n", l.first.x, l.first.y, l.first.z, l.second.x, l.second.y, l.second.z);
+		return l;
 	}
 
 	void applyMovesXYZ(Camera &c) {
