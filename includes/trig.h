@@ -10,6 +10,7 @@ struct Vec3F {
 	Vec3F& normalize();
 	Vec3F& mult(float c);
 	Vec3F& add(const Vec3F& o);
+	Vec3F rotationXYZ(const Vec3F& up) const; // vector to rotate to point towards [0,0,-1]
 
 	float len() const;
 };

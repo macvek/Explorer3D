@@ -18,8 +18,6 @@
 
 using namespace std;
 
-typedef M44<GLfloat> M44F;
-
 float calculateCenter(float space, float box) {
 	return (space - box) / 2;
 }
@@ -676,6 +674,10 @@ struct HitTest {
 	Line line;
 
 	bool check() {
+		// calculate rotation of a trace line -- calculate vector to rotate towards [0,0,-1]
+		// rotate triangle, so it can be calculated using only x,y;
+		// check if point [0,0] lays within a triangle
+		// calculate intersection point, i.e. point on triangle
 		return false;
 	}
 };
@@ -723,12 +725,21 @@ struct Renderable {
 	};
 
 	void mesh(vector<Triangle> &fill) {
+		M44F m;
+		m.asTranslate(pos.x, pos.y, pos.z)
+			.Mult(M44F().asRotateZ(angle.z))
+			.Mult(M44F().asRotateX(angle.x))
+			.Mult(M44F().asRotateY(angle.y))
+			.Mult(M44F().asScale(scale.x, scale.y, scale.z));
+
+		glMultMatrixf(m.ptr());
+
+		Vec3F a = { vertices[0], vertices[1], vertices[2] };
+		Vec3F b = { vertices[3], vertices[4], vertices[5] };
+		Vec3F c = { vertices[6], vertices[7], vertices[8] };
+		
 		Triangle t = {
-			 99, {
-				{vertices[0], vertices[1], vertices[2]},
-				{vertices[3], vertices[4], vertices[5]},
-				{vertices[6], vertices[7], vertices[8]}
-			}
+			 99, {a,b,c}
 		};
 
 		fill.push_back(t);
@@ -1205,26 +1216,11 @@ struct DrawPlane : UITrigger {
 	}
 
 	void vectorsToAngles(Camera &c, Vec3F& fwd, Vec3F& up) {
-
-		float radY = atan2(-fwd.x, -fwd.z);
-
-		M44F revY; revY.asRotateY(-radY);
-		Vec3F rotatedX = revY.ApplyOnPoint(fwd);
-
-		float radX = atan2(rotatedX.y, -rotatedX.z);
-
-		c.angle.x = deg(radX);
-		c.angle.y = deg(radY);
-
-		M44F m;
-		m
-			.Mult(M44F().asRotateX(rad(-c.angle.x)))
-			.Mult(M44F().asRotateY(rad(-c.angle.y)));
-
-		Vec3F revUp = m.ApplyOnPoint(up);
-
-		float radZ = atan2(-revUp.x, revUp.y);
-		c.angle.z = deg(radZ);
+		Vec3F rotationVector = fwd.rotationXYZ(up);
+		
+		c.angle.x = deg(rotationVector.x);
+		c.angle.y = deg(rotationVector.y);
+		c.angle.z = deg(rotationVector.z);
 	}
 
 	void pointerUpdate(Camera &c, float dX, float dY) {

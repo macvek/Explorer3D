@@ -1,5 +1,6 @@
 #include <trig.h>
 #include <log.h>
+#include <m44.h>
 
 void Vec3F::Print() const{
 	Log.printf("[ %f\t%f\t%f ]\n", x, y, z);
@@ -24,11 +25,38 @@ Vec3F& Vec3F::add(const Vec3F& o) {
 	return *this;
 }
 
+Vec3F Vec3F::rotationXYZ(const Vec3F &up) const{
+	float radY = atan2f(-x, -z);
+
+	M44F revY; revY.asRotateY(-radY);
+	Vec3F rotatedX = revY.ApplyOnPoint(*this);
+
+	float radX = atan2f(rotatedX.y, -rotatedX.z);
+
+	Vec3F ret = {
+		radX,
+		radY,
+		0
+	};
+
+	M44F m;
+	m
+		.Mult(M44F().asRotateX(-ret.x))
+		.Mult(M44F().asRotateY(-ret.y));
+
+
+	if (up.x != 0 || up.y != 1 || up.z == 0) {
+		Vec3F revUp = m.ApplyOnPoint(up);
+		float radZ = atan2f(-revUp.x, revUp.y);
+		ret.z = radZ;
+	}
+
+	return ret;
+}
+
 float Vec3F::len() const {
 	return sqrt(x * x + y * y + z * z);
 }
-
-
 
 double rad(double deg) {
 	return M_PI / 180 * deg;
