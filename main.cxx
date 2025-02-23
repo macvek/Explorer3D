@@ -647,6 +647,22 @@ struct Camera {
 const float Camera::fovMax = 175;
 const float Camera::fovMin = 5;
 
+struct Line {
+	Vec3F first;
+	Vec3F second;
+};
+
+struct Triagle {
+	int id;
+	Vec3F vertices[3];
+};
+
+struct HitTest {
+	bool check() {
+
+	}
+};
+
 struct Renderable {
 	
 	Vec3F pos = { 0,0,0 };
@@ -734,7 +750,7 @@ struct DrawPlane : UITrigger {
 
 	AllViews focusView;
 
-	vector<pair<Vec3F, Vec3F>> lines;
+	vector<Line> lines;
 	vector<Renderable> renderables;
 
 	MovementStrategy movement = MoveHybrid;
@@ -1032,7 +1048,7 @@ struct DrawPlane : UITrigger {
 		SDL_SetCursor(App.cursorPointer);
 	}
 
-	pair<Vec3F, Vec3F> traceLine(const Camera& c, const float x, const float y) {
+	Line traceLine(const Camera& c, const float x, const float y) {
 		int updatedY = App.windowHeight - (c.viewPos.y + c.viewSize.y) + y; 
 		float xRatio = x / c.viewSize.x * 2 - 1;
 		float yRatio = updatedY / c.viewSize.y * 2 - 1;
@@ -1047,16 +1063,11 @@ struct DrawPlane : UITrigger {
 			.Mult(M44F().asRotateX(rad(c.angle.x)))
 			.Mult(M44F().asRotateZ(rad(c.angle.z)));
 
-		pair<Vec3F, Vec3F> p;
-
 		Vec3F lineStart = { 0,0,0 };
 		Vec3F lineEnd = { pRight,pTop,-c.nearPlane };
 		lineEnd.normalize().mult(c.farPlane);
 		
-		p.first = m.ApplyOnPoint(lineStart);
-		p.second = m.ApplyOnPoint(lineEnd);
-
-		return p;
+		return { m.ApplyOnPoint(lineStart) , m.ApplyOnPoint(lineEnd) };
 	}
 
 	void applyMovesXYZ(Camera &c) {
@@ -1295,13 +1306,14 @@ struct DrawPlane : UITrigger {
 		glLoadIdentity();
 
 		c.eyeCoords();
-		glEnable(GL_DEPTH_TEST);
 		glColor3f(0.3, 0.3, 0.3);
 		drawGrid(0);
 
 		glColor3f(0.3, 0.3, 0.5);
 		drawGrid(3);
-
+		
+		glEnable(GL_DEPTH_TEST);
+		
 		glPushMatrix();
 		glTranslatef(0, 0, -3);
 		drawQuad();
