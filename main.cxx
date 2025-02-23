@@ -487,6 +487,7 @@ enum MainUI_IDs {
 	CAMERARESET_ID,
 	DISPLAYCOORDS_ID,
 	CHANGE_CURSOR_ID,
+	RUN_HITTEST_ID,
 };
 
 enum AllViews {
@@ -1002,6 +1003,7 @@ struct DrawPlane : UITrigger {
 		case CAMERARESET_ID: onCameraReset(); break;
 		case DISPLAYCOORDS_ID: onDisplayCoords(); break;
 		case CHANGE_CURSOR_ID: onChangeCursor(); break;
+		case RUN_HITTEST_ID: onRunHittest(); break;
 		default:
 			Log.printf("Unsupported event id %i\n", uiId); break;
 		}
@@ -1054,7 +1056,14 @@ struct DrawPlane : UITrigger {
 		mainUI.x = 100;
 		mainUI.y = 100;
 
-		vector<string> names = { "Single View", "Multi View", "Reset camera", "Display coords", "Change cursor"};
+		vector<string> names = { 
+			"Single View", 
+			"Multi View", 
+			"Reset camera", 
+			"Display coords", 
+			"Change cursor",
+			"Run Hittest"
+		};
 		addManyButtons(names, SINGLEVIEW_ID, { 0,0 }, mainUI.parts);
 	}
 
@@ -1064,6 +1073,10 @@ struct DrawPlane : UITrigger {
 	
 	void onChangeCursor() {
 		SDL_SetCursor(App.cursorPointer);
+	}
+
+	void onRunHittest() {
+		Log.printf("Hit test\n");
 	}
 
 	Line traceLine(const Camera& c, const float x, const float y) {
@@ -1470,7 +1483,7 @@ int main(int argc, char** argv) {
 			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
 				if ((mouseEvent->button == SDL_BUTTON_LEFT || mouseEvent->button == SDL_BUTTON_MIDDLE) && !App.mouseCaptureMode) {
-					d.lines.push_back(d.traceLine(d.camera, mouseEvent->x, mouseEvent->y));
+					//d.lines.push_back(d.traceLine(d.camera, mouseEvent->x, mouseEvent->y));
 					d.cursorButton({ mouseEvent->x, mouseEvent->y }, mouseEvent->button, false);
 
 				}
