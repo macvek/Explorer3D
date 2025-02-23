@@ -649,12 +649,13 @@ const float Camera::fovMin = 5;
 
 struct Renderable {
 	
-	Vec3F pos;
-	Vec3F angle;
+	Vec3F pos = { 0,0,0 };
+	Vec3F angle = { 0,0,0 };
+	Vec3F scale = { 1,1,1 };
 
 	void render(int frames) const {
 		// first approach - fixed cube rendering
-		static GLubyte facesIndexes[] = {
+		static GLubyte facesIndices[] = {
 			0,1,2,3, // -z
 			4,5,6,7, // +z
 
@@ -690,12 +691,20 @@ struct Renderable {
 			0.3, 0.3, 0.3,
 		};
 
+		glPushMatrix();
+		glTranslatef(pos.x, pos.y, pos.z);
+
+		glRotatef(angle.z, 0, 0, 1);
+		glRotatef(angle.x, 1, 0, 0);
+		glRotatef(angle.y, 0, 1, 0);
+		
+		glScalef(scale.x, scale.y, scale.z);
 
 		glColorPointer(3, GL_FLOAT, 0, colors);
 		glVertexPointer(3, GL_FLOAT, 0, vertices);
 
-		glDrawElements(GL_QUADS, 6*4, GL_UNSIGNED_BYTE, facesIndexes);
-
+		glDrawElements(GL_QUADS, 6*4, GL_UNSIGNED_BYTE, facesIndices);
+		glPopMatrix();
 	}
 };
 
@@ -923,6 +932,9 @@ struct DrawPlane : UITrigger {
 		onResize();
 
 		Renderable r;
+		r.pos = { 5,1,-5 };
+		r.angle = { 45,45,45 };
+		r.scale = { 0.2,0.2,0.2 };
 		renderables.push_back(r);
 	}
 
