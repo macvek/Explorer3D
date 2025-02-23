@@ -751,14 +751,14 @@ struct Renderable {
 			.Mult(M44F().asRotateY(angle.y))
 			.Mult(M44F().asScale(scale.x, scale.y, scale.z));
 
-		glMultMatrixf(m.ptr());
+		
 
 		Vec3F a = { vertices[0], vertices[1], vertices[2] };
 		Vec3F b = { vertices[3], vertices[4], vertices[5] };
 		Vec3F c = { vertices[6], vertices[7], vertices[8] };
 		
 		Triangle t = {
-			 99, {a,b,c}
+			 99, {m.ApplyOnPoint(a),m.ApplyOnPoint(b),m.ApplyOnPoint(c)}
 		};
 
 		fill.push_back(t);
@@ -1126,7 +1126,7 @@ struct DrawPlane : UITrigger {
 	void onRunHittest() {
 		HitTest ht;
 
-		boolean fullSample = false;
+		boolean fullSample = true;
 		if (fullSample) {
 			ht.line = lines[0];
 			renderables[0].mesh(ht.tris);
