@@ -1269,7 +1269,7 @@ struct DrawPlane : UITrigger {
 		glLoadIdentity();
 
 		c.eyeCoords();
-
+		glEnable(GL_DEPTH_TEST);
 		glColor3f(0.3, 0.3, 0.3);
 		drawGrid(0);
 
@@ -1285,7 +1285,7 @@ struct DrawPlane : UITrigger {
 		renderTraceLines();
 
 		renderRenderables();
-
+		glDisable(GL_DEPTH_TEST);
 	}
 
 	void renderOverlay2D() {
@@ -1315,6 +1315,7 @@ struct DrawPlane : UITrigger {
 		
 		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_DEPTH_BUFFER_BIT);
 
 		applyMoves(camera);
 
