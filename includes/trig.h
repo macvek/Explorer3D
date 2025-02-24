@@ -13,6 +13,7 @@ struct Vec3F {
 	Vec3F& mult(float c);
 	Vec3F& add(const Vec3F& o);
 	Vec3F& sub(const Vec3F& o);
+	Vec3F crossProduct(const Vec3F& o) const;
 	Vec3F rotationYXZ(const Vec3F& up) const; // vector to rotate to point towards [0,0,-1] applying in order : Y, X, Z
 
 	float len() const;

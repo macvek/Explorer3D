@@ -34,6 +34,14 @@ Vec3F& Vec3F::sub(const Vec3F& o) {
 
 Vec3F Vec3F::UP = { 0,1,0 };
 
+Vec3F Vec3F::crossProduct(const Vec3F& o) const {
+	return {
+		y * o.z - z * o.y,
+		z * o.x - x * o.z,
+		x * o.y - y * o.x
+	};
+}
+
 
 Vec3F Vec3F::rotationYXZ(const Vec3F &up) const{
 	float radY = atan2f(-x, -z);

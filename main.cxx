@@ -670,6 +670,16 @@ struct Line {
 struct Triangle {
 	int id;
 	Vec3F vertices[3];
+
+	Vec3F normal() const {
+		Vec3F a = vertices[2];
+		Vec3F b = vertices[2];
+
+		a.sub(vertices[0]);
+		b.sub(vertices[1]);
+
+		return a.crossProduct(b);
+	}
 };
 
 struct HitPosition {
@@ -730,7 +740,10 @@ struct HitTest {
 	}
 
 	// checks if point [0,0] is inside triangle a,b,c ignoring Z axis
-	bool hitTriangle(Vec3F& a, Vec3F& b, Vec3F& c) const {
+	bool hitTriangle(Triangle &t) const {
+		Vec3F& a = t.vertices[0];
+		Vec3F& b = t.vertices[1];
+		Vec3F& c = t.vertices[2];
 		int outOfX = pairIsOut(a,b) + pairIsOut(b,c) + pairIsOut(a,c);
 		if (outOfX == 3) { // it is either 0,1 or 3 for triangle
 			return false;
@@ -748,8 +761,16 @@ struct HitTest {
 
 	// hit is calculated for point [0,0]; triangle is shifted in Z axis; calculate distance to triangle plain on Z axis
 	float distanceFromCenter(const Triangle& t) {
-		// calculate plain equation, insert values for x=0,y=0, return z value
-		return 0;
+		Vec3F n = t.normal();
+		// triangle plain equation is n.x*X + n.y*Y + n.z*Z + D = 0 ;
+		// to calculate D i pick first vertex from triangle, and then for Z it is n.x*0 + n.y*0 + n.z*Z + D = 0 => Z = -D/n.z
+
+		Vec3F v = t.vertices[0];
+		float D = -(n.x*v.x + n.y*v.y + n.z*v.z);
+
+		float ret = -D / n.z;
+		Log.printf("DIST FROM CENTER: %f\n", ret);
+		return ret;
 	}
 
 	bool check() {
@@ -770,11 +791,13 @@ struct HitTest {
 			Vec3F b = m.ApplyOnPoint(t->vertices[1]);
 			Vec3F c = m.ApplyOnPoint(t->vertices[2]);
 			
-			if (hitTriangle(a, b, c)) {
+			Triangle mT = { t->id, {a,b,c} };
+
+			if (hitTriangle(mT)) {
 				ret = true;
 				
 				// calculate intersection point, i.e. point on triangle
-				hits.push_back({ t->id, {0,0, distanceFromCenter(*t)} });
+				hits.push_back({ t->id, {0,0, distanceFromCenter(mT)} });
 			}
 		}
 
