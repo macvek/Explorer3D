@@ -29,6 +29,16 @@ template <typename T> struct XYGeneric {
 
 using XYFloat = XYGeneric<float>;
 
+struct UIEvent {
+
+	UIEvent(XYFloat aCursor, int aButton, bool aDown) : cursor(aCursor), button(aButton), down(aDown) {}
+
+	XYFloat cursor;
+	int button;
+	bool down;
+	bool captured = false;
+};
+
 struct UIRGB {
 	unsigned char r = 0;
 	unsigned char g = 0;
@@ -200,7 +210,7 @@ struct TextPainterContext {
 		// it just stops and state of x/y is taken as output
 		x = 0;
 		y = 0;
-		for (auto ptr = FontMap.cbegin(); ptr < FontMap.cend(); ++ptr) {
+		for (auto ptr = FontMap.cbegin(); ptr != FontMap.cend(); ++ptr) {
 			if (*ptr == c) {
 				return;
 			}
@@ -227,7 +237,7 @@ struct TextPainterContext {
 		int lineMax = 0;
 		int x = 0;
 		int y = 1;
-		for (auto ptr = text.cbegin(); ptr < text.cend(); ++ptr) {
+		for (auto ptr = text.cbegin(); ptr != text.cend(); ++ptr) {
 			++x;
 			if (*ptr == '\n') {
 				y++;
@@ -259,7 +269,7 @@ struct TextPainterContext {
 		float tW = fontCharWidth * tUnit;
 		float tH = fontCharHeight * tUnit;
 
-		for (auto c = text.cbegin(); c < text.cend(); ++c) {
+		for (auto c = text.cbegin(); c != text.cend(); ++c) {
 			if (*c == '\t') {
 				int xIdx = oX / fontCharWidth;
 				int tabbedIdx = (xIdx / TAB_SIZE + 1) * TAB_SIZE;
@@ -354,24 +364,26 @@ struct UIRect {
 		}
 	}
 
-	void buttonAt(XYFloat cursor, int button, bool down) {
-		if (button != SDL_BUTTON_LEFT) {
+	void buttonAt(UIEvent &e) {
+		if (e.button != SDL_BUTTON_LEFT) {
 			return;
 		}
 		
-		if (inRange(cursor)) {
-			if (down && state != UICursorActive) {
+		if (inRange(e.cursor)) {
+			if (e.down && state != UICursorActive) {
 				updateState(UICursorActive);
 			}
-			else if (!down && state == UICursorActive) {
+			else if (!e.down && state == UICursorActive) {
 				updateState(UICursorHover);
 				if (actionEvent) {
 					actionEvent->onAction(id);
+					e.captured = true;
 				}
 			}
 		}
-		else if (!down && state == UICursorActive) {
+		else if (!e.down && state == UICursorActive) {
 			updateState(UICursorIdle);
+			e.captured = true;
 		}
 	}
 
@@ -458,12 +470,16 @@ struct UIGroup {
 		}
 	}
 
-	void buttonAt(XYFloat cursor, int button, bool down) {
-		XYFloat relativeCursor{ cursor.x - x, cursor.y - y };
+	void buttonAt(UIEvent &e) {
+		XYFloat relativeCursor{ e.cursor.x - x, e.cursor.y - y };
+		XYFloat origCursor = e.cursor;
+		e.cursor = relativeCursor;
 
 		for (auto each = parts.begin(); each < parts.end(); ++each) {
-			each->buttonAt(relativeCursor, button, down);
+			each->buttonAt(e);
 		}
+
+		e.cursor = origCursor;
 	}
 
 	float x = 0;
@@ -471,7 +487,7 @@ struct UIGroup {
 
 	void render() const {
 		glTranslatef(x, y, 0);
-		for (auto each = parts.cbegin(); each < parts.cend(); ++each) {
+		for (auto each = parts.cbegin(); each != parts.cend(); ++each) {
 			glPushMatrix();
 			each->render();
 			glPopMatrix();
@@ -737,7 +753,7 @@ struct HitTest {
 			.Mult(M44F().asRotateY(-angles.y))
 			.Mult(M44F().asTranslate(-line.first.x, -line.first.y, -line.first.z));
 
-		for (auto t = tris.cbegin(); t < tris.cend(); t++) {
+		for (auto t = tris.cbegin(); t != tris.cend(); t++) {
 			Vec3F a = m.ApplyOnPoint(t->vertices[0]);
 			Vec3F b = m.ApplyOnPoint(t->vertices[1]);
 			Vec3F c = m.ApplyOnPoint(t->vertices[2]);
@@ -866,7 +882,7 @@ struct DrawPlane : UITrigger {
 
 	AllViews focusView;
 
-	vector<Line> lines;
+	list<Line> lines;
 	vector<Renderable> renderables;
 
 	MovementStrategy movement = MoveHybrid;
@@ -1129,7 +1145,7 @@ struct DrawPlane : UITrigger {
 		int id = startingId;
 		XYFloat pos = startingPos;
 
-		for (auto name = names.cbegin(); name < names.cend(); ++name) {
+		for (auto name = names.cbegin(); name != names.cend(); ++name) {
 			UIRect button;
 
 			button.pos = pos;
@@ -1176,13 +1192,17 @@ struct DrawPlane : UITrigger {
 	}
 
 	void onRunHittest() {
+		if (lines.empty()) {
+			return;
+		}
+		
 		HitTest ht;
+		ht.line = lines.front();
+		lines.pop_front();
 
-		ht.line = lines[0];
 		renderables[0].mesh(ht.tris);
 
 		int response = ht.check();
-
 		Log.printf("ht.check -> %i\n", response);
 	}
 
@@ -1338,10 +1358,16 @@ struct DrawPlane : UITrigger {
 	}
 
 	void cursorButton(XYFloat xy, int idx, bool down) {
-		mainUI.buttonAt(xy, idx, down);
+		UIEvent e(xy, idx, down);
+
+		mainUI.buttonAt(e);
 		
 		if (SDL_BUTTON_MIDDLE == idx) {
 			handleDragging(xy, down);
+		}
+
+		if (!e.down && !e.captured) {
+			lines.push_back(traceLine(camera, e.cursor.x, e.cursor.y));
 		}
 	}
 
@@ -1407,7 +1433,7 @@ struct DrawPlane : UITrigger {
 
 	void renderTraceLines() {
 		glBegin(GL_LINES);
-		for (auto p = lines.cbegin(); p < lines.cend(); ++p) {
+		for (auto p = lines.cbegin(); p != lines.cend(); ++p) {
 			glColor3f(0, 1, 1); glVertex3f(p->first.x, p->first.y, p->first.z);
 			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
 		}
@@ -1575,7 +1601,6 @@ int main(int argc, char** argv) {
 			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
 				SDL_MouseButtonEvent* mouseEvent = (SDL_MouseButtonEvent*)&event;
 				if ((mouseEvent->button == SDL_BUTTON_LEFT || mouseEvent->button == SDL_BUTTON_MIDDLE) && !App.mouseCaptureMode) {
-					d.lines.push_back(d.traceLine(d.camera, mouseEvent->x, mouseEvent->y));
 					d.cursorButton({ mouseEvent->x, mouseEvent->y }, mouseEvent->button, false);
 
 				}
