@@ -672,6 +672,10 @@ struct Triangle {
 	Vec3F vertices[3];
 };
 
+struct HitPosition {
+	int id;
+	Vec3F v;
+};
 
 struct Quad {
 	int id;
@@ -687,6 +691,7 @@ struct Quad {
 
 struct HitTest {
 	vector<Triangle> tris;
+	vector<HitPosition> hits;
 	Line line;
 
 	// return 1 if point is above line, -1 if is below, 0 if is on the line or outside of X axis
@@ -741,7 +746,13 @@ struct HitTest {
 		return sum >= -1 && sum <= 1;
 	}
 
-	bool check() const{
+	// hit is calculated for point [0,0]; triangle is shifted in Z axis; calculate distance to triangle plain on Z axis
+	float distanceFromCenter(const Triangle& t) {
+		// calculate plain equation, insert values for x=0,y=0, return z value
+		return 0;
+	}
+
+	bool check() {
 		Vec3F dir = line.second;
 		dir.sub(line.first);
 
@@ -753,19 +764,24 @@ struct HitTest {
 			.Mult(M44F().asRotateY(-angles.y))
 			.Mult(M44F().asTranslate(-line.first.x, -line.first.y, -line.first.z));
 
+		bool ret = false;
 		for (auto t = tris.cbegin(); t != tris.cend(); t++) {
 			Vec3F a = m.ApplyOnPoint(t->vertices[0]);
 			Vec3F b = m.ApplyOnPoint(t->vertices[1]);
 			Vec3F c = m.ApplyOnPoint(t->vertices[2]);
 			
 			if (hitTriangle(a, b, c)) {
-				return true;
+				ret = true;
+				
+				// calculate intersection point, i.e. point on triangle
+				hits.push_back({ t->id, {0,0, distanceFromCenter(*t)} });
 			}
 		}
 
-		// check if point [0,0] lays within a triangle
-		// calculate intersection point, i.e. point on triangle
-		return false;
+		// sort hits in Z order, figure out the strategy for multiple hits if triangle should hold it or ordered set of all handlers should decide if it passes or not
+		// rotate all points back to universal coordinates
+
+		return ret;
 	}
 };
 
