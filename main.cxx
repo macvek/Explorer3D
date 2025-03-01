@@ -739,7 +739,7 @@ struct HitTest {
 		}
 	}
 
-	// checks if point [0,0] is inside triangle a,b,c ignoring Z axis
+	// checks if point [0,0] is inside triangle a,b,c ignoring Z axis ; it will check it for infinite length of trace line, so requires distance check
 	bool hitTriangle(Triangle &t) const {
 		Vec3F& a = t.vertices[0];
 		Vec3F& b = t.vertices[1];
@@ -769,8 +769,9 @@ struct HitTest {
 		float D = -(n.x*v.x + n.y*v.y + n.z*v.z);
 
 		float ret = -D / n.z;
-		Log.printf("DIST FROM CENTER: %f\n", ret);
-		return ret;
+		// value returned is -ret, because triangle lays on negative plain 
+		Log.printf("DIST FROM CENTER: %f\n", -ret);
+		return -ret;
 	}
 
 	bool check() {
@@ -795,9 +796,14 @@ struct HitTest {
 
 			if (hitTriangle(mT)) {
 				ret = true;
+				float distance = distanceFromCenter(mT);
 				
-				// calculate intersection point, i.e. point on triangle
-				hits.push_back({ t->id, {0,0, distanceFromCenter(mT)} });
+				// distance < 0 means that triange is BEHIND relative point [0,0]
+				if (distance > 0) {
+					// calculate intersection point, i.e. point on triangle
+					hits.push_back({ t->id, {0,0, distance } });
+				}
+
 			}
 		}
 
