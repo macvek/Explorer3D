@@ -687,6 +687,12 @@ struct Triangle {
 
 		return a.crossProduct(b);
 	}
+
+	void transform(M44F m) {
+		vertices[0] = m.ApplyOnPoint(vertices[0]);
+		vertices[1] = m.ApplyOnPoint(vertices[1]);
+		vertices[2] = m.ApplyOnPoint(vertices[2]);
+	}
 };
 
 
@@ -702,10 +708,17 @@ struct HitPosition {
 
 struct Quad {
 	int id;
-	Vec3F vertices[4];
+	array<Vec3F,4> vertices;
 
-	Quad(int aId, array<float, 24>& vertices, array<float, 4>& faces) : id(aId) {
-	
+	Quad(int aId, const float* aVertices, const unsigned int* faces) : id(aId), vertices({}) {
+		for (int i = 0; i < 4; ++i) {
+			int idx = faces[i]*3;
+			vertices[i] = {
+				aVertices[idx + 0],
+				aVertices[idx + 1],
+				aVertices[idx + 2]
+			};
+		}
 	}
 
 	pair<Triangle, Triangle> asTris() {
@@ -849,7 +862,7 @@ struct Renderable {
 	Vec3F scale = { 1,1,1 };
 
 	bool showSingle = true;
-	array<GLubyte,24> facesIndices = {
+	array<GLuint,24> facesIndices = {
 			0,1,2,3, // -z
 			4,5,6,7, // +z
 
@@ -884,7 +897,7 @@ struct Renderable {
 			0.3, 0.3, 0.3,
 	};
 
-	void mesh(vector<Triangle> &fill) {
+	void mesh(vector<Triangle> &fill) const {
 		M44F m;
 		m.asTranslate(pos.x, pos.y, pos.z)
 			.Mult(M44F().asRotateZ(angle.z))
@@ -896,12 +909,17 @@ struct Renderable {
 		Vec3F a = { vertices[0], vertices[1], vertices[2] };
 		Vec3F b = { vertices[3], vertices[4], vertices[5] };
 		Vec3F c = { vertices[6], vertices[7], vertices[8] };
-		
-		Triangle t = {
-			 99, {m.ApplyOnPoint(a),m.ApplyOnPoint(b),m.ApplyOnPoint(c)}
-		};
 
-		fill.push_back(t);
+		Quad q(99, vertices.data(), facesIndices.data());
+		 
+		pair<Triangle, Triangle> tris = q.asTris();
+		
+		tris.first.transform(m);
+		tris.second.transform(m);
+		
+		fill.push_back(tris.first);
+		fill.push_back(tris.second);
+
 	}
 
 	void render(int frames) const {
@@ -933,10 +951,10 @@ struct Renderable {
 		glVertexPointer(3, GL_FLOAT, 0, vertices.data());
 
 		if (showSingle) {
-			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_BYTE, facesIndices.data());
+			glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, facesIndices.data());
 		}
 		else {
-			glDrawElements(GL_QUADS, 6 * 4, GL_UNSIGNED_BYTE, facesIndices.data());
+			glDrawElements(GL_QUADS, 6 * 4, GL_UNSIGNED_INT, facesIndices.data());
 		}
 		glPopMatrix();
 	}
