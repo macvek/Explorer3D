@@ -702,7 +702,8 @@ struct HitPosition {
 	Vec3F v;
 
 	static int Ordered(const HitPosition& a, const HitPosition& b) {
-		return comp(a.v.z, b.v.z);
+		// descending , as smaller Z = closer
+		return comp(b.v.z, a.v.z);
 	}
 };
 
@@ -1422,9 +1423,7 @@ struct DrawPlane : UITrigger {
 
 		int hasHits = ht.check();
 		if (hasHits) {
-			for (const HitPosition& each : ht.hits) {
-				cursorMarker = each.v;
-			}
+			cursorMarker = ht.hits[0].v;
 		}
 	}
 
