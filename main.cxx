@@ -861,7 +861,6 @@ struct Renderable {
 	Vec3F angle = { 0,0,0 };
 	Vec3F scale = { 1,1,1 };
 
-	bool showSingle = true;
 	array<GLuint,24> facesIndices = {
 			0,1,2,3, // -z
 			4,5,6,7, // +z
@@ -900,26 +899,23 @@ struct Renderable {
 	void mesh(vector<Triangle> &fill) const {
 		M44F m;
 		m.asTranslate(pos.x, pos.y, pos.z)
-			.Mult(M44F().asRotateZ(angle.z))
-			.Mult(M44F().asRotateX(angle.x))
-			.Mult(M44F().asRotateY(angle.y))
+			.Mult(M44F().asRotateZ(rad(angle.z)))
+			.Mult(M44F().asRotateX(rad(angle.x)))
+			.Mult(M44F().asRotateY(rad(angle.y)))
 			.Mult(M44F().asScale(scale.x, scale.y, scale.z));
 
 
-		Vec3F a = { vertices[0], vertices[1], vertices[2] };
-		Vec3F b = { vertices[3], vertices[4], vertices[5] };
-		Vec3F c = { vertices[6], vertices[7], vertices[8] };
+		for (int i = 0; i < 6; ++i) {
+			Quad q(99, vertices.data(), facesIndices.data()+(i*4));
 
-		Quad q(99, vertices.data(), facesIndices.data());
-		 
-		pair<Triangle, Triangle> tris = q.asTris();
-		
-		tris.first.transform(m);
-		tris.second.transform(m);
-		
-		fill.push_back(tris.first);
-		fill.push_back(tris.second);
+			pair<Triangle, Triangle> tris = q.asTris();
 
+			tris.first.transform(m);
+			tris.second.transform(m);
+
+			fill.push_back(tris.first);
+			fill.push_back(tris.second);
+		}
 	}
 
 	void render(int frames) const {
@@ -939,9 +935,9 @@ struct Renderable {
 		else {
 			M44F m;
 			m.asTranslate(pos.x, pos.y, pos.z)
-				.Mult(M44F().asRotateZ(angle.z))
-				.Mult(M44F().asRotateX(angle.x))
-				.Mult(M44F().asRotateY(angle.y))
+				.Mult(M44F().asRotateZ(rad(angle.z)))
+				.Mult(M44F().asRotateX(rad(angle.x)))
+				.Mult(M44F().asRotateY(rad(angle.y)))
 				.Mult(M44F().asScale(scale.x, scale.y, scale.z));
 
 			glMultMatrixf(m.ptr());
@@ -950,12 +946,8 @@ struct Renderable {
 		glColorPointer(3, GL_FLOAT, 0, colors.data());
 		glVertexPointer(3, GL_FLOAT, 0, vertices.data());
 
-		if (showSingle) {
-			glDrawElements(GL_QUADS, 4, GL_UNSIGNED_INT, facesIndices.data());
-		}
-		else {
-			glDrawElements(GL_QUADS, 6 * 4, GL_UNSIGNED_INT, facesIndices.data());
-		}
+		glDrawElements(GL_QUADS, 6 * 4, GL_UNSIGNED_INT, facesIndices.data());
+		
 		glPopMatrix();
 	}
 };
@@ -1185,7 +1177,7 @@ struct DrawPlane : UITrigger {
 		onResize();
 
 		Renderable r;
-		r.showSingle = true;
+
 		r.pos = { 5,1,-5 };
 		r.angle = { 45,45,45 };
 		r.scale = { 1,1,1 };
