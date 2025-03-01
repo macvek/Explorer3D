@@ -772,7 +772,7 @@ struct HitTest {
 	}
 
 	// hit is calculated for point [0,0]; triangle is shifted in Z axis; calculate distance to triangle plain on Z axis
-	float distanceFromCenter(const Triangle& t) {
+	float zOffsetFromCenter(const Triangle& t) {
 		Vec3F n = t.normal();
 		// triangle plain equation is n.x*X + n.y*Y + n.z*Z + D = 0 ;
 		// to calculate D i pick first vertex from triangle, and then for Z it is n.x*0 + n.y*0 + n.z*Z + D = 0 => Z = -D/n.z
@@ -780,10 +780,7 @@ struct HitTest {
 		Vec3F v = t.vertices[0];
 		float D = -(n.x*v.x + n.y*v.y + n.z*v.z);
 
-		float ret = -D / n.z;
-		// value returned is -ret, because triangle lays on negative plain 
-		Log.printf("DIST FROM CENTER: %f\n", -ret);
-		return -ret;
+		return -D / n.z;
 	}
 
 	bool check() {
@@ -806,12 +803,11 @@ struct HitTest {
 			Triangle mT = { t.id, {a,b,c} };
 
 			if (hitTriangle(mT)) {
-				float distance = distanceFromCenter(mT);
+				float offsetZ = zOffsetFromCenter(mT);
 				
-				// distance < 0 means that triange is BEHIND relative point [0,0]
-				if (distance > 0) {
-					// calculate intersection point, i.e. point on triangle
-					hits.push_back({ t.id, {0,0, distance } });
+				// distance > 0 means that triange is BEHIND (we look in direction [0,0,-1] axis)
+				if (offsetZ < 0) {
+					hits.push_back({ t.id, {0,0,offsetZ } });
 				}
 			}
 		}
@@ -821,14 +817,13 @@ struct HitTest {
 
 			// figure out the strategy for multiple hits if triangle should hold it or ordered set of all handlers should decide if it passes or not
 
-			// rotate all points back to universal coordinates
 			M44F revM;
-			revM.Mult(M44F().asTranslate(line.first.x, line.first.y, line.first.z))
-				.Mult(M44F().asRotateY(angles.y))
-				.Mult(M44F().asRotateX(angles.x));
+			revM.Mult(M44F().asRotateY(angles.y))
+				.Mult(M44F().asRotateX(angles.x))
+				.Mult(M44F().asTranslate(line.first.x, line.first.y, line.first.z));
 
 			for (HitPosition& t : hits) {
-				t.v = m.ApplyOnPoint(t.v);
+				t.v = revM.ApplyOnPoint(t.v);
 			}
 
 			return true;
