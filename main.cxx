@@ -1179,12 +1179,17 @@ struct DrawPlane : UITrigger {
 		setupUI();
 		onResize();
 
-		Renderable r;
+		int FLOODCOUNT = 10;
+		for (int x=-FLOODCOUNT;x< FLOODCOUNT;++x)
+		for (int z = -FLOODCOUNT; z < FLOODCOUNT; ++z) {
+			Renderable r;
+			r.pos = { (float)(x*0.5), 5 ,(float)(z*0.5) };
+			r.angle = { 45,45,45 };
+			r.scale = { 0.2,0.2,0.2 };
 
-		r.pos = { 5,1,-5 };
-		r.angle = { 45,45,45 };
-		r.scale = { 1,1,1 };
-		renderables.push_back(r);
+			renderables.push_back(r);
+		}
+		
 	}
 
 	void onResize() {
@@ -1275,6 +1280,14 @@ struct DrawPlane : UITrigger {
 		SDL_SetCursor(App.cursorPointer);
 	}
 
+	bool hitTestOnRenderables(HitTest& ht) {
+		for (const Renderable& each : renderables) {
+			each.mesh(ht.tris);
+		}
+
+		return ht.check();
+	}
+
 	void onRunHittest() {
 		if (lines.empty()) {
 			return;
@@ -1282,16 +1295,15 @@ struct DrawPlane : UITrigger {
 		
 		HitTest ht;
 		ht.line = lines.front();
-		lines.pop_front();
+		bool hasHits = hitTestOnRenderables(ht);
 
-		renderables[0].mesh(ht.tris);
-
-		int hasHits = ht.check();
 		if (hasHits) {
 			for (const HitPosition& each : ht.hits) {
 				markers.push_back(each.v);
 			}
 		}
+
+		lines.pop_front();
 	}
 
 	Line traceLine(const Camera& c, const float x, const float y) {
@@ -1416,13 +1428,11 @@ struct DrawPlane : UITrigger {
 		}
 
 		cursorLine = traceLine(camera, xy.x, xy.y);
+		
 		HitTest ht;
 		ht.line = cursorLine;
 
-		renderables[0].mesh(ht.tris);
-
-		int hasHits = ht.check();
-		if (hasHits) {
+		if (hitTestOnRenderables(ht)) {
 			cursorMarker = ht.hits[0].v;
 		}
 	}
