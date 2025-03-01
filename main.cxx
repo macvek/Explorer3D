@@ -3,6 +3,7 @@
 #include <SDL3_image/SDL_image.h>
 
 #include <iostream>
+#include <array>
 #include <vector>
 #include <list>
 #include <string>
@@ -703,6 +704,10 @@ struct Quad {
 	int id;
 	Vec3F vertices[4];
 
+	Quad(int aId, array<float, 24>& vertices, array<float, 4>& faces) : id(aId) {
+	
+	}
+
 	pair<Triangle, Triangle> asTris() {
 		pair<Triangle, Triangle> p;
 		p.first = { id, {vertices[0], vertices[1], vertices[2]} };
@@ -788,7 +793,7 @@ struct HitTest {
 		dir.sub(line.first);
 
 		Vec3F angles = dir.rotationYXZ(Vec3F::UP);
-		Log.printf("Angles %f %f %f\n", deg(angles.x), deg(angles.y), deg(angles.z));
+
 		// Align all objects along 'line' so all calculations are along x,y axises
 		M44F m;
 		m.Mult(M44F().asRotateX(-angles.x))
@@ -844,7 +849,7 @@ struct Renderable {
 	Vec3F scale = { 1,1,1 };
 
 	bool showSingle = true;
-	GLubyte facesIndices[24] = {
+	array<GLubyte,24> facesIndices = {
 			0,1,2,3, // -z
 			4,5,6,7, // +z
 
@@ -855,7 +860,7 @@ struct Renderable {
 			0,3,7,4, // +y
 	};
 
-	GLfloat vertices[24] = {
+	array<GLfloat, 24> vertices = {
 			-1, 1,-1,
 			-1,-1,-1,
 			 1,-1,-1,
@@ -867,7 +872,7 @@ struct Renderable {
 			 1, 1, 1,
 	};
 
-	GLfloat colors[24] = {
+	array<GLfloat, 24> colors = {
 			1.0, 0.0, 0.0,
 			0.0, 0.1, 0.0,
 			0.0, 0.0, 1.0,
@@ -887,7 +892,6 @@ struct Renderable {
 			.Mult(M44F().asRotateY(angle.y))
 			.Mult(M44F().asScale(scale.x, scale.y, scale.z));
 
-		
 
 		Vec3F a = { vertices[0], vertices[1], vertices[2] };
 		Vec3F b = { vertices[3], vertices[4], vertices[5] };
@@ -925,14 +929,14 @@ struct Renderable {
 			glMultMatrixf(m.ptr());
 		}
 
-		glColorPointer(3, GL_FLOAT, 0, colors);
-		glVertexPointer(3, GL_FLOAT, 0, vertices);
+		glColorPointer(3, GL_FLOAT, 0, colors.data());
+		glVertexPointer(3, GL_FLOAT, 0, vertices.data());
 
 		if (showSingle) {
-			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_BYTE, facesIndices);
+			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_BYTE, facesIndices.data());
 		}
 		else {
-			glDrawElements(GL_QUADS, 6 * 4, GL_UNSIGNED_BYTE, facesIndices);
+			glDrawElements(GL_QUADS, 6 * 4, GL_UNSIGNED_BYTE, facesIndices.data());
 		}
 		glPopMatrix();
 	}
