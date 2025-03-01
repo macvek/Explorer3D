@@ -842,7 +842,6 @@ struct HitTest {
 				
 
 			for (HitPosition& t : hits) {
-				t.v.Print();
 				t.v = revM.ApplyOnPoint(t.v);
 			}
 
@@ -963,6 +962,9 @@ struct DrawPlane : UITrigger {
 	Camera cameraAngles;
 
 	AllViews focusView;
+
+	Line cursorLine;
+	Vec3F cursorMarker;
 
 	list<Line> lines;
 	list<Vec3F> markers;
@@ -1182,8 +1184,6 @@ struct DrawPlane : UITrigger {
 		r.angle = { 45,45,45 };
 		r.scale = { 1,1,1 };
 		renderables.push_back(r);
-
-		//lines.push_back({{ 0.366,0.360, -3.835 }, { 9.869, -0.461, -6.839 }});
 	}
 
 	void onResize() {
@@ -1312,9 +1312,7 @@ struct DrawPlane : UITrigger {
 		Vec3F lineEnd = { pRight,pTop,-c.nearPlane };
 		lineEnd.normalize().mult(c.farPlane);
 
-		Line l = { m.ApplyOnPoint(lineStart) , m.ApplyOnPoint(lineEnd) };
-		Log.printf("Line [%.3f %.3f %.3f] [%.3f %.3f %.3f]\n", l.first.x, l.first.y, l.first.z, l.second.x, l.second.y, l.second.z);
-		return l;
+		return { m.ApplyOnPoint(lineStart) , m.ApplyOnPoint(lineEnd) };
 	}
 
 	void applyMovesXYZ(Camera &c) {
@@ -1410,10 +1408,23 @@ struct DrawPlane : UITrigger {
 		}
 	}
 
-	void cursorUpdate(float x, float y, float dx, float dy) {
-		mainUI.cursorAt({ x,y });
+	void cursorUpdate( XYFloat xy, XYFloat dxy) {
+		mainUI.cursorAt(xy);
 		if (multiViewEnabled && dragging) {
-			cameraAtXY(dragXY).applyCameraDrag(dx, dy);
+			cameraAtXY(dragXY).applyCameraDrag(dxy.x, dxy.y);
+		}
+
+		cursorLine = traceLine(camera, xy.x, xy.y);
+		HitTest ht;
+		ht.line = cursorLine;
+
+		renderables[0].mesh(ht.tris);
+
+		int hasHits = ht.check();
+		if (hasHits) {
+			for (const HitPosition& each : ht.hits) {
+				cursorMarker = each.v;
+			}
 		}
 	}
 
@@ -1543,6 +1554,24 @@ struct DrawPlane : UITrigger {
 		glEnd();
 	}
 
+	void renderCursorMarker() {
+		glBegin(GL_LINES);
+		float s = 0.1;
+
+		Vec3F& p = cursorMarker;
+
+		glColor3f(1, 0, 1); glVertex3f(p.x - s, p.y, p.z);
+		glColor3f(1, 1, 1); glVertex3f(p.x + s, p.y, p.z);
+
+		glColor3f(1, 0, 1); glVertex3f(p.x, p.y - s, p.z);
+		glColor3f(1, 1, 1); glVertex3f(p.x, p.y + s, p.z);
+
+		glColor3f(1, 0, 1); glVertex3f(p.x, p.y, p.z - s);
+		glColor3f(1, 1, 1); glVertex3f(p.x, p.y, p.z + s);
+		
+		glEnd();
+	}
+
 	void renderRenderables() const{
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_COLOR_ARRAY);
@@ -1576,6 +1605,7 @@ struct DrawPlane : UITrigger {
 		renderTexturedPlane();
 		renderTraceLines();
 		renderMarkers();
+		renderCursorMarker();
 
 		renderRenderables();
 		glDisable(GL_DEPTH_TEST);
@@ -1734,7 +1764,7 @@ int main(int argc, char** argv) {
 					d.pointerUpdate(d.camera, mouseEvent->xrel, mouseEvent->yrel);
 				}
 				else {
-					d.cursorUpdate(mouseEvent->x, mouseEvent->y, mouseEvent->xrel, mouseEvent->yrel);
+					d.cursorUpdate({ mouseEvent->x, mouseEvent->y }, { mouseEvent->xrel, mouseEvent->yrel });
 				}
 			}
 			else if (event.type == SDL_EVENT_KEY_DOWN) {
