@@ -11,12 +11,18 @@
 #include <Windows.h>
 #include <gl/gl.h>
 
+#include <algorithm>
+
 #include <cmath>
 #include <log.h>
 #include <trig.h>
 #include <m44.h>
 
 using namespace std;
+
+template<typename T> int comp(const T& a, const T& b) {
+	return a < b;
+};
 
 float calculateCenter(float space, float box) {
 	return (space - box) / 2;
@@ -682,9 +688,15 @@ struct Triangle {
 	}
 };
 
+
+
 struct HitPosition {
 	int id;
 	Vec3F v;
+
+	static int Ordered(const HitPosition& a, const HitPosition& b) {
+		return comp(a.v.z, b.v.z);
+	}
 };
 
 struct Quad {
@@ -786,7 +798,6 @@ struct HitTest {
 			.Mult(M44F().asRotateY(-angles.y))
 			.Mult(M44F().asTranslate(-line.first.x, -line.first.y, -line.first.z));
 
-		bool ret = false;
 		for (const Triangle& t : tris) {
 			Vec3F a = m.ApplyOnPoint(t.vertices[0]);
 			Vec3F b = m.ApplyOnPoint(t.vertices[1]);
@@ -799,19 +810,33 @@ struct HitTest {
 				
 				// distance < 0 means that triange is BEHIND relative point [0,0]
 				if (distance > 0) {
-					ret = true;
 					// calculate intersection point, i.e. point on triangle
 					hits.push_back({ t.id, {0,0, distance } });
 				}
 			}
 		}
 
+		if (hits.size() != 0) {
+			sort(hits.begin(), hits.end(), HitPosition::Ordered);
+
+			// figure out the strategy for multiple hits if triangle should hold it or ordered set of all handlers should decide if it passes or not
+
+			// rotate all points back to universal coordinates
+			M44F revM;
+			revM.Mult(M44F().asTranslate(line.first.x, line.first.y, line.first.z))
+				.Mult(M44F().asRotateY(angles.y))
+				.Mult(M44F().asRotateX(angles.x));
+
+			for (HitPosition& t : hits) {
+				t.v = m.ApplyOnPoint(t.v);
+			}
+
+			return true;
+		}
+		else {
+			return false;
+		}
 		
-
-		// sort hits in Z order, figure out the strategy for multiple hits if triangle should hold it or ordered set of all handlers should decide if it passes or not
-		// rotate all points back to universal coordinates
-
-		return ret;
 	}
 };
 
