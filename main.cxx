@@ -210,11 +210,11 @@ struct TextPainterContext {
 		// it just stops and state of x/y is taken as output
 		x = 0;
 		y = 0;
-		for (auto ptr = FontMap.cbegin(); ptr != FontMap.cend(); ++ptr) {
-			if (*ptr == c) {
+		for (const char each : FontMap) {
+			if (each == c) {
 				return;
 			}
-			if (*ptr == '\n') {
+			if (each == '\n') {
 				y += 1;
 				x = 0;
 			}
@@ -237,9 +237,9 @@ struct TextPainterContext {
 		int lineMax = 0;
 		int x = 0;
 		int y = 1;
-		for (auto ptr = text.cbegin(); ptr != text.cend(); ++ptr) {
+		for (const char each: text) {
 			++x;
-			if (*ptr == '\n') {
+			if (each == '\n') {
 				y++;
 				lineMax = max<int>(x, lineMax);
 			}
@@ -269,22 +269,22 @@ struct TextPainterContext {
 		float tW = fontCharWidth * tUnit;
 		float tH = fontCharHeight * tUnit;
 
-		for (auto c = text.cbegin(); c != text.cend(); ++c) {
-			if (*c == '\t') {
+		for (const char c : text) {
+			if (c == '\t') {
 				int xIdx = oX / fontCharWidth;
 				int tabbedIdx = (xIdx / TAB_SIZE + 1) * TAB_SIZE;
 				oX = tabbedIdx * fontCharWidth;
 
 			}
-			else if (*c == '\n') {
+			else if (c == '\n') {
 				oX = 0;
 				oY += fontCharHeight;
 			}
-			else if (*c == ' ') {
+			else if (c == ' ') {
 				oX += fontCharWidth;
 			}
 			else {
-				charCoord(*c, cX, cY);
+				charCoord(c, cX, cY);
 				tX = cX * fontCharWidth * tUnit;
 				tY = cY * fontCharHeight * tUnit;
 
@@ -465,8 +465,8 @@ struct UIGroup {
 	void cursorAt(XYFloat cursor) {
 		XYFloat relativeCursor{ cursor.x - x, cursor.y - y };
 
-		for (auto each = parts.begin(); each < parts.end(); ++each) {
-			each->cursorAt(relativeCursor);
+		for (UIRect &each : parts) {
+			each.cursorAt(relativeCursor);
 		}
 	}
 
@@ -475,8 +475,8 @@ struct UIGroup {
 		XYFloat origCursor = e.cursor;
 		e.cursor = relativeCursor;
 
-		for (auto each = parts.begin(); each < parts.end(); ++each) {
-			each->buttonAt(e);
+		for (UIRect& each : parts) {
+			each.buttonAt(e);
 		}
 
 		e.cursor = origCursor;
@@ -487,9 +487,9 @@ struct UIGroup {
 
 	void render() const {
 		glTranslatef(x, y, 0);
-		for (auto each = parts.cbegin(); each != parts.cend(); ++each) {
+		for (const UIRect &each : parts) {
 			glPushMatrix();
-			each->render();
+			each.render();
 			glPopMatrix();
 		}
 	}
@@ -787,12 +787,12 @@ struct HitTest {
 			.Mult(M44F().asTranslate(-line.first.x, -line.first.y, -line.first.z));
 
 		bool ret = false;
-		for (auto t = tris.cbegin(); t != tris.cend(); t++) {
-			Vec3F a = m.ApplyOnPoint(t->vertices[0]);
-			Vec3F b = m.ApplyOnPoint(t->vertices[1]);
-			Vec3F c = m.ApplyOnPoint(t->vertices[2]);
+		for (const Triangle& t : tris) {
+			Vec3F a = m.ApplyOnPoint(t.vertices[0]);
+			Vec3F b = m.ApplyOnPoint(t.vertices[1]);
+			Vec3F c = m.ApplyOnPoint(t.vertices[2]);
 			
-			Triangle mT = { t->id, {a,b,c} };
+			Triangle mT = { t.id, {a,b,c} };
 
 			if (hitTriangle(mT)) {
 				float distance = distanceFromCenter(mT);
@@ -801,11 +801,12 @@ struct HitTest {
 				if (distance > 0) {
 					ret = true;
 					// calculate intersection point, i.e. point on triangle
-					hits.push_back({ t->id, {0,0, distance } });
+					hits.push_back({ t.id, {0,0, distance } });
 				}
-
 			}
 		}
+
+		
 
 		// sort hits in Z order, figure out the strategy for multiple hits if triangle should hold it or ordered set of all handlers should decide if it passes or not
 		// rotate all points back to universal coordinates
@@ -1190,12 +1191,12 @@ struct DrawPlane : UITrigger {
 		int id = startingId;
 		XYFloat pos = startingPos;
 
-		for (auto name = names.cbegin(); name != names.cend(); ++name) {
+		for (const string& name : names) {
 			UIRect button;
 
 			button.pos = pos;
 
-			button.text = *name;
+			button.text = name;
 			button.size = { 150, 30 };
 			button.centerText();
 			button.id = id;
@@ -1478,9 +1479,9 @@ struct DrawPlane : UITrigger {
 
 	void renderTraceLines() {
 		glBegin(GL_LINES);
-		for (auto p = lines.cbegin(); p != lines.cend(); ++p) {
-			glColor3f(0, 1, 1); glVertex3f(p->first.x, p->first.y, p->first.z);
-			glColor3f(1, 1, 0); glVertex3f(p->second.x, p->second.y, p->second.z);
+		for (const Line& p : lines) {
+			glColor3f(0, 1, 1); glVertex3f(p.first.x, p.first.y, p.first.z);
+			glColor3f(1, 1, 0); glVertex3f(p.second.x, p.second.y, p.second.z);
 		}
 		glEnd();
 	}
@@ -1488,8 +1489,8 @@ struct DrawPlane : UITrigger {
 	void renderRenderables() const{
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_COLOR_ARRAY);
-		for (auto ptr = renderables.cbegin(); ptr < renderables.cend(); ++ptr) {
-			ptr->render(frames);
+		for (const Renderable& each : renderables) {
+			each.render(frames);
 		}
 	}
 
