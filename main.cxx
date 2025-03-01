@@ -795,11 +795,11 @@ struct HitTest {
 			Triangle mT = { t->id, {a,b,c} };
 
 			if (hitTriangle(mT)) {
-				ret = true;
 				float distance = distanceFromCenter(mT);
 				
 				// distance < 0 means that triange is BEHIND relative point [0,0]
 				if (distance > 0) {
+					ret = true;
 					// calculate intersection point, i.e. point on triangle
 					hits.push_back({ t->id, {0,0, distance } });
 				}
