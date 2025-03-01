@@ -788,7 +788,7 @@ struct HitTest {
 		dir.sub(line.first);
 
 		Vec3F angles = dir.rotationYXZ(Vec3F::UP);
-
+		Log.printf("Angles %f %f %f\n", deg(angles.x), deg(angles.y), deg(angles.z));
 		// Align all objects along 'line' so all calculations are along x,y axises
 		M44F m;
 		m.Mult(M44F().asRotateX(-angles.x))
@@ -818,11 +818,13 @@ struct HitTest {
 			// figure out the strategy for multiple hits if triangle should hold it or ordered set of all handlers should decide if it passes or not
 
 			M44F revM;
-			revM.Mult(M44F().asRotateY(angles.y))
-				.Mult(M44F().asRotateX(angles.x))
-				.Mult(M44F().asTranslate(line.first.x, line.first.y, line.first.z));
+			revM.Mult(M44F().asTranslate(line.first.x, line.first.y, line.first.z))
+				.Mult(M44F().asRotateY(angles.y))
+				.Mult(M44F().asRotateX(angles.x));
+				
 
 			for (HitPosition& t : hits) {
+				t.v.Print();
 				t.v = revM.ApplyOnPoint(t.v);
 			}
 
