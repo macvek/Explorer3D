@@ -530,7 +530,7 @@ struct Camera {
 	static const float fovMin;
 
 	float nearPlane = 0.1;
-	float farPlane = 10;
+	float farPlane = 100;
 	
 	bool perspective = true;
 	bool adjustOrtho = false;
@@ -954,6 +954,7 @@ struct DrawPlane : UITrigger {
 	AllViews focusView;
 
 	list<Line> lines;
+	list<Vec3F> markers;
 	vector<Renderable> renderables;
 
 	MovementStrategy movement = MoveHybrid;
@@ -1273,8 +1274,12 @@ struct DrawPlane : UITrigger {
 
 		renderables[0].mesh(ht.tris);
 
-		int response = ht.check();
-		Log.printf("ht.check -> %i\n", response);
+		int hasHits = ht.check();
+		if (hasHits) {
+			for (const HitPosition& each : ht.hits) {
+				markers.push_back(each.v);
+			}
+		}
 	}
 
 	Line traceLine(const Camera& c, const float x, const float y) {
@@ -1511,6 +1516,22 @@ struct DrawPlane : UITrigger {
 		glEnd();
 	}
 
+	void renderMarkers() {
+		glBegin(GL_LINES);
+		float s = 0.1;
+		for (const Vec3F& p : markers) {
+			glColor3f(1, 1, 1); glVertex3f(p.x-s, p.y, p.z);
+			glColor3f(1, 1, 1); glVertex3f(p.x+s, p.y, p.z);
+
+			glColor3f(1, 1, 1); glVertex3f(p.x, p.y-s, p.z);
+			glColor3f(1, 1, 1); glVertex3f(p.x, p.y+s, p.z);
+
+			glColor3f(1, 1, 1); glVertex3f(p.x, p.y, p.z-s);
+			glColor3f(1, 1, 1); glVertex3f(p.x, p.y, p.z+s);
+		}
+		glEnd();
+	}
+
 	void renderRenderables() const{
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_COLOR_ARRAY);
@@ -1543,6 +1564,7 @@ struct DrawPlane : UITrigger {
 
 		renderTexturedPlane();
 		renderTraceLines();
+		renderMarkers();
 
 		renderRenderables();
 		glDisable(GL_DEPTH_TEST);
