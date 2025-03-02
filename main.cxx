@@ -856,12 +856,24 @@ struct HitTest {
 };
 
 struct Renderable {
+	virtual int getId() const = 0;
 	virtual void mesh(vector<Triangle>& fill) const = 0;
 	virtual void render(int frames) const = 0;
+	virtual void toggleSelect() = 0;
 };
 
 struct ModelCube : public Renderable {
 	
+	int id = 0;
+
+	int getId() const{
+		return id;
+	}
+
+	void toggleSelect() {
+		wireframe = !wireframe;
+	}
+
 	bool wireframe = true;
 	Vec3F pos = { 0,0,0 };
 	Vec3F angle = { 0,0,0 };
@@ -912,7 +924,7 @@ struct ModelCube : public Renderable {
 
 
 		for (int i = 0; i < 6; ++i) {
-			Quad q(99, vertices.data(), facesIndices.data()+(i*4));
+			Quad q(id, vertices.data(), facesIndices.data()+(i*4));
 
 			pair<Triangle, Triangle> tris = q.asTris();
 
@@ -995,6 +1007,7 @@ struct DrawPlane : UITrigger {
 
 	Line cursorLine;
 	Vec3F cursorMarker;
+	int cursorId;
 
 	list<Line> lines;
 	list<Vec3F> markers;
@@ -1022,6 +1035,23 @@ struct DrawPlane : UITrigger {
 	XYFloat dragXY;
 	bool dragging = false;
 	
+	int nextId = 1;
+	int reserveId(int count) {
+		int r = nextId;
+		nextId += count;
+
+		return r;
+	}
+
+	Renderable* renderableForId(int id) {
+		for (const shared_ptr<Renderable>& each : renderables) {
+			if (id == each->getId()) {
+				return each.get();
+			}
+		}
+
+		return nullptr;
+	}
 
 	void showMessages() {
 
@@ -1343,6 +1373,8 @@ struct DrawPlane : UITrigger {
 	ModelCube modelCubeAt(const Camera& c, const XYFloat& xy) {
 		Line l = traceLineRanged(c, xy, 2);
 		ModelCube r;
+
+		r.id = reserveId(1);
 		r.pos = l.second;
 		r.angle = { 45,45,45 };
 		r.scale = { 0.2,0.2,0.2 };
@@ -1503,7 +1535,12 @@ struct DrawPlane : UITrigger {
 		ht.line = cursorLine;
 
 		if (hitTestOnRenderables(ht)) {
-			cursorMarker = ht.hits[0].v;
+			HitPosition &firstHit = ht.hits.front();
+			cursorMarker = firstHit.v;
+			cursorId = firstHit.id;
+		}
+		else {
+			cursorId = -1;
 		}
 	}
 
@@ -1549,7 +1586,15 @@ struct DrawPlane : UITrigger {
 		}
 
 		if (!e.down && idx == SDL_BUTTON_LEFT && !e.captured) {
-			renderables.push_back(make_shared<ModelCube>(modelCubeAt(c, e.cursor)));
+			if (cursorId == -1) {
+				renderables.push_back(make_shared<ModelCube>(modelCubeAt(c, e.cursor)));
+			}
+			else {
+				Renderable* pointed = renderableForId(cursorId);
+				if (pointed) {
+					pointed->toggleSelect();
+				}
+			}
 		}
 	}
 
@@ -1689,7 +1734,9 @@ struct DrawPlane : UITrigger {
 		renderTexturedPlane();
 		renderTraceLines();
 		renderMarkers();
-		renderCursorMarker();
+		if (cursorId != -1) {
+			renderCursorMarker();
+		}
 
 		renderRenderables();
 		glDisable(GL_DEPTH_TEST);
