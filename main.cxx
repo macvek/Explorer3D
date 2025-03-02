@@ -995,6 +995,7 @@ struct DrawPlane : UITrigger {
 	
 
 	void showMessages() {
+
 		if (endOfMessageFrame == 0 && Log.unreadMessages > 0) {
 			endOfMessageFrame = framesForMessage;
 		}
@@ -1157,6 +1158,7 @@ struct DrawPlane : UITrigger {
 		cameraXZ.orthoRange = { -5,5,-5,5 };
 		cameraXZ.farPlane = 100;
 		cameraXZ.nearPlane = -100;
+		cameraXZ.pos = { 0,0,0 };
 		cameraXZ.angle = { -90,0,0 };
 
 		cameraXY = cameraXZ;
@@ -1172,6 +1174,19 @@ struct DrawPlane : UITrigger {
 		cameraAngles.viewSize = { 64,64 };
 	}
 
+	void floodcount() {
+		int FLOODCOUNT = 10;
+		for (int x = -FLOODCOUNT; x < FLOODCOUNT; ++x)
+		for (int z = -FLOODCOUNT; z < FLOODCOUNT; ++z) {
+			Renderable r;
+			r.pos = { (float)(x * 0.5), 5 ,(float)(z * 0.5) };
+			r.angle = { 45,45,45 };
+			r.scale = { 0.2,0.2,0.2 };
+
+			renderables.push_back(r);
+		}
+	}
+
 	void init() {
 		loadFontTexture();
 		setupConsoleView();
@@ -1179,17 +1194,7 @@ struct DrawPlane : UITrigger {
 		setupUI();
 		onResize();
 
-		int FLOODCOUNT = 10;
-		for (int x=-FLOODCOUNT;x< FLOODCOUNT;++x)
-		for (int z = -FLOODCOUNT; z < FLOODCOUNT; ++z) {
-			Renderable r;
-			r.pos = { (float)(x*0.5), 5 ,(float)(z*0.5) };
-			r.angle = { 45,45,45 };
-			r.scale = { 0.2,0.2,0.2 };
-
-			renderables.push_back(r);
-		}
-		
+		if (0) floodcount();
 	}
 
 	void onResize() {
@@ -1306,24 +1311,46 @@ struct DrawPlane : UITrigger {
 		lines.pop_front();
 	}
 
-	Line traceLine(const Camera& c, const float x, const float y) {
-		int updatedY = App.windowHeight - (c.viewPos.y + c.viewSize.y) + y; 
-		float xRatio = x / c.viewSize.x * 2 - 1;
-		float yRatio = updatedY / c.viewSize.y * 2 - 1;
-
-		float pRight = xRatio * c.frustumRight; // minus xRatio because we rotate along Y axis
-		float pTop = -yRatio * c.frustumTop;
-
+	Line traceLine(const Camera& c, const XYFloat& xy) {
 		M44F m;
 		m
 			.Mult(M44F().asTranslate(c.pos.x, c.pos.y, c.pos.z))
 			.Mult(M44F().asRotateY(rad(c.angle.y)))
 			.Mult(M44F().asRotateX(rad(c.angle.x)))
 			.Mult(M44F().asRotateZ(rad(c.angle.z)));
+		
+		// align xy to camera top left corner
+		int updatedY = xy.y - (App.windowHeight - c.viewPos.y - c.viewSize.y);
+		int updatedX = xy.x - c.viewPos.x;
+
+		float pRight = 0;
+		float pTop = 0;
 
 		Vec3F lineStart = { 0,0,0 };
-		Vec3F lineEnd = { pRight,pTop,-c.nearPlane };
-		lineEnd.normalize().mult(c.farPlane);
+		Vec3F lineEnd = { 0,0,0 };
+		if (c.perspective) {
+			float xRatio = updatedX / c.viewSize.x * 2 - 1;
+			float yRatio = updatedY / c.viewSize.y * 2 - 1;
+
+			pRight = xRatio * c.frustumRight; // minus xRatio because we rotate along Y axis
+			pTop = -yRatio * c.frustumTop;
+
+			lineEnd = { pRight,pTop,-c.nearPlane };
+			lineEnd.normalize().mult(c.farPlane);
+		}
+		else {
+			float xRatio = updatedX / c.viewSize.x; 
+			float yRatio = updatedY / c.viewSize.y;
+
+			ClippingRange r = c.calculateClippingRange();
+
+			pRight = r.left + (r.right - r.left) * xRatio;
+			pTop = r.top - (r.top - r.bottom) * yRatio;
+
+			lineStart = { pRight, pTop, 10};
+			lineEnd = { pRight, pTop, -10 };
+		}
+
 
 		return { m.ApplyOnPoint(lineStart) , m.ApplyOnPoint(lineEnd) };
 	}
@@ -1427,7 +1454,7 @@ struct DrawPlane : UITrigger {
 			cameraAtXY(dragXY).applyCameraDrag(dxy.x, dxy.y);
 		}
 
-		cursorLine = traceLine(camera, xy.x, xy.y);
+		cursorLine = traceLine(cameraAtXY(xy), xy);
 		
 		HitTest ht;
 		ht.line = cursorLine;
@@ -1474,7 +1501,7 @@ struct DrawPlane : UITrigger {
 		}
 
 		if (!e.down && !e.captured) {
-			lines.push_back(traceLine(camera, e.cursor.x, e.cursor.y));
+			lines.push_back(traceLine(cameraAtXY(xy), e.cursor));
 		}
 	}
 
