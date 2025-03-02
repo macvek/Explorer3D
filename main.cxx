@@ -1311,14 +1311,24 @@ struct DrawPlane : UITrigger {
 		lines.pop_front();
 	}
 
-	Line traceLine(const Camera& c, const XYFloat& xy) {
+	Renderable renderableAt(const Camera& c, const XYFloat& xy) {
+		Line l = traceLineRanged(c, xy, 2);
+		Renderable r;
+		r.pos = l.second;
+		r.angle = { 45,45,45 };
+		r.scale = { 0.2,0.2,0.2 };
+
+		return r;
+	}
+
+	Line traceLineRanged(const Camera& c, const XYFloat& xy, float range) {
 		M44F m;
 		m
 			.Mult(M44F().asTranslate(c.pos.x, c.pos.y, c.pos.z))
 			.Mult(M44F().asRotateY(rad(c.angle.y)))
 			.Mult(M44F().asRotateX(rad(c.angle.x)))
 			.Mult(M44F().asRotateZ(rad(c.angle.z)));
-		
+
 		// align xy to camera top left corner
 		int updatedY = xy.y - (App.windowHeight - c.viewPos.y - c.viewSize.y);
 		int updatedX = xy.x - c.viewPos.x;
@@ -1336,10 +1346,10 @@ struct DrawPlane : UITrigger {
 			pTop = -yRatio * c.frustumTop;
 
 			lineEnd = { pRight,pTop,-c.nearPlane };
-			lineEnd.normalize().mult(c.farPlane);
+			lineEnd.normalize().mult(range);
 		}
 		else {
-			float xRatio = updatedX / c.viewSize.x; 
+			float xRatio = updatedX / c.viewSize.x;
 			float yRatio = updatedY / c.viewSize.y;
 
 			ClippingRange r = c.calculateClippingRange();
@@ -1347,12 +1357,16 @@ struct DrawPlane : UITrigger {
 			pRight = r.left + (r.right - r.left) * xRatio;
 			pTop = r.top - (r.top - r.bottom) * yRatio;
 
-			lineStart = { pRight, pTop, 10};
-			lineEnd = { pRight, pTop, -10 };
+			lineStart = { pRight, pTop, 100 };
+			lineEnd = { pRight, pTop, -range };
 		}
 
 
 		return { m.ApplyOnPoint(lineStart) , m.ApplyOnPoint(lineEnd) };
+	}
+
+	Line traceLine(const Camera& c, const XYFloat& xy) {
+		return traceLineRanged(c, xy, c.farPlane);
 	}
 
 	void applyMovesXYZ(Camera &c) {
@@ -1500,8 +1514,13 @@ struct DrawPlane : UITrigger {
 			handleDragging(xy, down);
 		}
 
+		Camera& c = cameraAtXY(xy);
 		if (!e.down && !e.captured) {
-			lines.push_back(traceLine(cameraAtXY(xy), e.cursor));
+			//lines.push_back(traceLine(c, e.cursor));
+		}
+
+		if (!e.down && idx == SDL_BUTTON_LEFT && !e.captured) {
+			renderables.push_back(renderableAt(c, e.cursor));
 		}
 	}
 
