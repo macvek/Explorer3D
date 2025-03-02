@@ -856,6 +856,11 @@ struct HitTest {
 };
 
 struct Renderable {
+	virtual void mesh(vector<Triangle>& fill) const = 0;
+	virtual void render(int frames) const = 0;
+};
+
+struct ModelCube : public Renderable {
 	
 	bool wireframe = true;
 	Vec3F pos = { 0,0,0 };
@@ -993,7 +998,7 @@ struct DrawPlane : UITrigger {
 
 	list<Line> lines;
 	list<Vec3F> markers;
-	vector<Renderable> renderables;
+	vector<ModelCube> renderables;
 
 	MovementStrategy movement = MoveHybrid;
 	const int fovDiff = 1;
@@ -1202,7 +1207,7 @@ struct DrawPlane : UITrigger {
 		int FLOODCOUNT = 10;
 		for (int x = -FLOODCOUNT; x < FLOODCOUNT; ++x)
 		for (int z = -FLOODCOUNT; z < FLOODCOUNT; ++z) {
-			Renderable r;
+			ModelCube r;
 			r.pos = { (float)(x * 0.5), 5 ,(float)(z * 0.5) };
 			r.angle = { 45,45,45 };
 			r.scale = { 0.2,0.2,0.2 };
@@ -1310,7 +1315,7 @@ struct DrawPlane : UITrigger {
 	}
 
 	bool hitTestOnRenderables(HitTest& ht) {
-		for (const Renderable& each : renderables) {
+		for (const ModelCube& each : renderables) {
 			each.mesh(ht.tris);
 		}
 
@@ -1335,9 +1340,9 @@ struct DrawPlane : UITrigger {
 		lines.pop_front();
 	}
 
-	Renderable renderableAt(const Camera& c, const XYFloat& xy) {
+	ModelCube modelCubeAt(const Camera& c, const XYFloat& xy) {
 		Line l = traceLineRanged(c, xy, 2);
-		Renderable r;
+		ModelCube r;
 		r.pos = l.second;
 		r.angle = { 45,45,45 };
 		r.scale = { 0.2,0.2,0.2 };
@@ -1544,7 +1549,8 @@ struct DrawPlane : UITrigger {
 		}
 
 		if (!e.down && idx == SDL_BUTTON_LEFT && !e.captured) {
-			renderables.push_back(renderableAt(c, e.cursor));
+			ModelCube model = modelCubeAt(c, e.cursor);
+			renderables.push_back(model);
 		}
 	}
 
@@ -1654,7 +1660,7 @@ struct DrawPlane : UITrigger {
 	void renderRenderables() const{
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_COLOR_ARRAY);
-		for (const Renderable& each : renderables) {
+		for (const ModelCube& each : renderables) {
 			each.render(frames);
 		}
 	}
