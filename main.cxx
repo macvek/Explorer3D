@@ -857,6 +857,7 @@ struct HitTest {
 
 struct Renderable {
 	
+	bool wireframe = true;
 	Vec3F pos = { 0,0,0 };
 	Vec3F angle = { 0,0,0 };
 	Vec3F scale = { 1,1,1 };
@@ -943,11 +944,34 @@ struct Renderable {
 			glMultMatrixf(m.ptr());
 		}
 
+		
 		glColorPointer(3, GL_FLOAT, 0, colors.data());
 		glVertexPointer(3, GL_FLOAT, 0, vertices.data());
 
 		glDrawElements(GL_QUADS, 6 * 4, GL_UNSIGNED_INT, facesIndices.data());
+		glPolygonOffset(0, 0.2);
+		if (wireframe) {
+			glLineWidth(2);
+			int quad = 0;
+			int vidx = 0;
+			for (GLuint i : facesIndices) {
+				vidx = i * 3;
+				//glColor3fv(&colors[vidx]);
+				glColor3f(1,1,1);
+				if (quad % 4 == 0) {
+					if (quad != 0) {
+						glEnd();
+					}
+					glBegin(GL_LINE_LOOP);
+				}
+				++quad;
+				glVertex3fv(&vertices[vidx]);
+			}
+			glEnd();
+			glLineWidth(1);
+		}
 		
+		glPolygonOffset(0, 0);
 		glPopMatrix();
 	}
 };
