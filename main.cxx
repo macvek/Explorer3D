@@ -998,7 +998,7 @@ struct DrawPlane : UITrigger {
 
 	list<Line> lines;
 	list<Vec3F> markers;
-	vector<ModelCube> renderables;
+	vector<shared_ptr<Renderable>> renderables;
 
 	MovementStrategy movement = MoveHybrid;
 	const int fovDiff = 1;
@@ -1212,7 +1212,7 @@ struct DrawPlane : UITrigger {
 			r.angle = { 45,45,45 };
 			r.scale = { 0.2,0.2,0.2 };
 
-			renderables.push_back(r);
+			renderables.push_back(make_shared<ModelCube>(r));
 		}
 	}
 
@@ -1315,8 +1315,8 @@ struct DrawPlane : UITrigger {
 	}
 
 	bool hitTestOnRenderables(HitTest& ht) {
-		for (const ModelCube& each : renderables) {
-			each.mesh(ht.tris);
+		for (const shared_ptr<Renderable>& each : renderables) {
+			each->mesh(ht.tris);
 		}
 
 		return ht.check();
@@ -1549,8 +1549,7 @@ struct DrawPlane : UITrigger {
 		}
 
 		if (!e.down && idx == SDL_BUTTON_LEFT && !e.captured) {
-			ModelCube model = modelCubeAt(c, e.cursor);
-			renderables.push_back(model);
+			renderables.push_back(make_shared<ModelCube>(modelCubeAt(c, e.cursor)));
 		}
 	}
 
@@ -1660,8 +1659,8 @@ struct DrawPlane : UITrigger {
 	void renderRenderables() const{
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_COLOR_ARRAY);
-		for (const ModelCube& each : renderables) {
-			each.render(frames);
+		for (const shared_ptr<Renderable>& each : renderables) {
+			each->render(frames);
 		}
 	}
 
