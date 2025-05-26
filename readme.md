@@ -14,5 +14,8 @@ Use cmake, create directory `build` and inside it:
 * I failed to get it running on Linux using Mesa3D, yet I did not want to debug it, portability is not the point of this project.
 
 https://github.com/user-attachments/assets/2bbe93e6-ac79-4c4f-b5f3-9b0f1aa8dc4c
+
 https://github.com/user-attachments/assets/5e890af0-5713-4a09-ad9f-f7c2a5ba4f41
+
 https://github.com/user-attachments/assets/78da90e0-ff73-4195-a0fc-683bfd24bed3
+
