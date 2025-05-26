@@ -874,7 +874,7 @@ struct ModelCube : public Renderable {
 		wireframe = !wireframe;
 	}
 
-	bool wireframe = true;
+	bool wireframe = false;
 	Vec3F pos = { 0,0,0 };
 	Vec3F angle = { 0,0,0 };
 	Vec3F scale = { 1,1,1 };
